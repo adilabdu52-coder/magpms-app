@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>MAGPMS — Backend Test</title>
+<style>
+body{background:#080c14;color:#e2e8f0;font-family:system-ui,sans-serif;font-size:14px;margin:0;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p{color:#64748b;font-size:12.5px;margin:0 0 14px}
+button{background:#f59e0b;color:#000;border:0;border-radius:10px;padding:12px 18px;font-size:15px;font-weight:700;width:100%;margin-bottom:14px}
+.t{background:#0e1520;border:1px solid #1c2a3e;border-radius:12px;padding:10px 12px;margin-bottom:8px}
+.t .n{font-weight:700;font-family:monospace;font-size:13px}
+.t .s{float:right;font-weight:700;font-size:12px}
+.ok{color:#22c55e}.fail{color:#ef4444}.warn{color:#f59e0b}
+.t pre{white-space:pre-wrap;word-break:break-all;color:#94a3b8;font-size:11px;margin:6px 0 0;max-height:120px;overflow:auto}
+</style>
+</head>
+<body>
+<h1>⛽ MAGPMS Backend Test</h1>
+<p>Tests every Supabase function the app uses and shows the real answer from the server. Green = working. Red = the reason your page shows nothing.</p>
+<button onclick="run()">▶ Run All Tests</button>
+<div id="out"></div>
+
+<script src="config.js"></script>
+<script>
+const TESTS=[
+  ['get_prices',{}],
+  ['list_tanks',{}],
+  ['list_sales (all — admin Sales page)',['list_sales',{p_staff_id:null,p_limit:100}]],
+  ['daily_report (admin Reports)',['daily_report',{p_days:7}]],
+  ['fuel_report (admin Reports)',['fuel_report',{p_days:7}]],
+  ['staff_report_v2 (admin Reports)',['staff_report_v2',{p_days:7}]],
+  ['list_credit_customers',{}],
+  ['admin_list_staff',['admin_list_staff',{p_status:null}]],
+  ['admin_list_shifts',['admin_list_shifts',{p_limit:50}]],
+  ['admin_list_readings',['admin_list_readings',{p_limit:100}]],
+  ['admin_list_attendance',['admin_list_attendance',{p_limit:100}]],
+  ['list_expenses',['list_expenses',{p_limit:50}]],
+  ['list_nozzles',{}]
+];
+function row(name,status,cls,detail){
+  const d=document.createElement('div');d.className='t';
+  d.innerHTML='<span class="s '+cls+'">'+status+'</span><span class="n">'+name+'</span>'+
+    (detail?'<pre>'+detail.replace(/</g,'&lt;')+'</pre>':'');
+  document.getElementById('out').appendChild(d);
+}
+async function run(){
+  document.getElementById('out').innerHTML='';
+  for(const t of TESTS){
+    const label=t[0];
+    const fn=Array.isArray(t[1])?t[1][0]:label.split(' ')[0];
+    const params=Array.isArray(t[1])?t[1][1]:t[1];
+    try{
+      const r=await rpc(fn,params);
+      const raw=JSON.stringify(r);
+      if(Array.isArray(r)){
+        row(label, r.length+' rows', r.length? 'ok':'warn', raw.slice(0,400));
+      }else if(r&&r.code){
+        row(label,'ERROR','fail','Server error: '+raw.slice(0,400));
+      }else{
+        row(label,'reply','ok',raw.slice(0,400));
+      }
+    }catch(e){
+      row(label,'FAILED','fail',String(e));
+    }
+  }
+}
+</script>
+</body>
+</html>

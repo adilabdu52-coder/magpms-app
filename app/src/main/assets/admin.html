@@ -1,466 +1,587 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="auto">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1d4ed8">
-<title>MAGPMS — Admin</title>
-<link rel="stylesheet" href="css/theme.css">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#0e1520"/>
+<title>MAGPMS — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/theme.css"/>
 </head>
 <body>
+<div id="loading">Loading...</div>
+<div id="app" style="display:none">
 
-<div class="app">
-  <!-- Sidebar (desktop) -->
-  <aside class="sidebar">
-    <div class="brand"><span data-icon="compass"></span> MAGPMS</div>
-    <button class="nav-item active" data-nav="dashboard"><span data-icon="dashboard"></span> Dashboard</button>
-    <button class="nav-item" data-nav="map"><span data-icon="map"></span> Map</button>
-    <button class="nav-item" data-nav="markers"><span data-icon="pin"></span> Markers</button>
-    <button class="nav-item" data-nav="data"><span data-icon="data"></span> Data</button>
-    <button class="nav-item" data-nav="settings"><span data-icon="settings"></span> Settings</button>
-    <div class="spacer"></div>
-    <button class="nav-item" id="btn-logout-side"><span data-icon="logout"></span> Switch role</button>
-  </aside>
+<header>
+  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+  <div class="brand">⛽ MAGPMS<small id="whoami"></small></div>
+  <div class="h-actions">
+    <button class="theme-btn" id="themeBtn" aria-label="Switch theme">🌙</button>
+    <button class="btn btn-out" onclick="logout()">Log Out</button>
+  </div>
+</header>
 
-  <!-- Topbar -->
-  <header class="topbar">
-    <span class="brand-mini"><span data-icon="compass"></span> MAGPMS</span>
-    <div class="topbar-title" id="page-title">Dashboard</div>
-    <span class="role-chip admin">Admin</span>
-  </header>
+<div id="menuOverlay" onclick="toggleMenu()"></div>
+<nav id="sideMenu">
+  <div class="menu-head">
+    <div class="menu-logo">⛽</div>
+    <div><div class="menu-title">MAGPMS</div>
+    <div class="menu-sub">Fuel Station Cloud</div></div>
+  </div>
+  <div class="mi active" data-s="dashboard" onclick="go('dashboard',this)"><span class="ic">📊</span> Dashboard</div>
+  <div class="mi" data-s="prices" onclick="go('prices',this)"><span class="ic">💲</span> Fuel Prices</div>
+  <div class="mi" data-s="staff" onclick="go('staff',this)"><span class="ic">👥</span> User Accounts</div>
+  <div class="mi" data-s="tanks" onclick="go('tanks',this)"><span class="ic">🛢</span> Tanks &amp; Delivery</div>
+  <div class="mi" data-s="credit" onclick="go('credit',this)"><span class="ic">🧾</span> Credit Customers</div>
+  <div class="mi" data-s="sales" onclick="go('sales',this)"><span class="ic">💰</span> Sales</div>
+  <div class="mi" data-s="expenses" onclick="go('expenses',this)"><span class="ic">💸</span> Expenses</div>
+  <div class="mi" data-s="reports" onclick="go('reports',this)"><span class="ic">📈</span> Staff Report</div>
+  <div class="mi" data-s="shifts" onclick="go('shifts',this)"><span class="ic">🕒</span> Shifts &amp; Attendance</div>
+</nav>
 
-  <!-- Main -->
-  <main class="app-main">
+<div class="wrap">
 
-    <!-- DASHBOARD VIEW -->
-    <section class="view active" data-view="dashboard">
-      <div class="view-pad">
-        <div class="stat-grid" id="stats"></div>
-        <div class="card">
-          <div class="card-title">Quick actions</div>
-          <div class="row" style="flex-wrap:wrap">
-            <button class="btn primary" id="qa-add"><span data-icon="plus"></span> Add marker</button>
-            <button class="btn" id="qa-map"><span data-icon="map"></span> Open map</button>
-            <button class="btn" id="qa-export"><span data-icon="download"></span> Export data</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Recent markers</div>
-          <div class="list" id="recent-list"></div>
-        </div>
-      </div>
-    </section>
+<!-- ================= DASHBOARD ================= -->
+<div class="section show" id="sec-dashboard">
+  <h1 class="display">Dashboard</h1>
+  <div class="sub">Live station overview</div>
 
-    <!-- MAP VIEW -->
-    <section class="view" data-view="map">
-      <div class="map-wrap">
-        <div id="map"></div>
-        <div class="map-fallback hidden" id="map-fallback">
-          <span data-icon="offline"></span>
-          <h3>Map unavailable</h3>
-          <p class="muted">The map needs an internet connection to load.<br>You can still add markers by coordinates from the Markers tab.</p>
-          <button class="btn primary" id="btn-map-retry">Retry</button>
-        </div>
-        <div class="map-fabs">
-          <button class="fab" id="fab-layer" aria-label="Switch layer"><span data-icon="layers"></span></button>
-          <button class="fab" id="fab-fullscreen" aria-label="Fullscreen"><span data-icon="fullscreen"></span></button>
-          <button class="fab" id="fab-locate" aria-label="My location"><span data-icon="locate"></span></button>
-          <button class="fab primary" id="fab-add" aria-label="Add marker"><span data-icon="plus"></span></button>
-        </div>
-      </div>
-    </section>
+  <div class="clock"><div class="d" id="clockDate">—</div><div class="t" id="clockTime">—</div></div>
 
-    <!-- MARKERS VIEW -->
-    <section class="view" data-view="markers">
-      <div class="view-pad">
-        <div class="search-row">
-          <input class="input" id="search" type="search" placeholder="Search markers…">
-          <button class="btn primary" id="btn-add-marker"><span data-icon="plus"></span></button>
-        </div>
-        <div class="chip-row" id="cat-chips"></div>
-        <div class="list" id="marker-list"></div>
-      </div>
-    </section>
+  <div class="stats">
+    <div class="scard"><div class="em">💰</div><div class="lbl">Total Sales</div>
+      <div class="val v-gold" id="dTotalSales">0</div><div class="unit">ETB</div></div>
+    <div class="scard"><div class="em">🛢</div><div class="lbl">Fuel Stock<span class="badge-low hidden" id="dStockBadge">LOW</span></div>
+      <div class="val v-blue" id="dFuelStock">0</div><div class="unit">Liters</div></div>
+    <div class="scard"><div class="em">💳</div><div class="lbl">Credit Balance</div>
+      <div class="val v-purple" id="dCredit">0</div><div class="unit">ETB</div></div>
+    <div class="scard hl"><div class="em">👷</div><div class="lbl">Employees</div>
+      <div class="val v-green" id="dOnDuty">0</div><div class="unit">On Duty Now</div></div>
+  </div>
 
-    <!-- DATA VIEW -->
-    <section class="view" data-view="data">
-      <div class="view-pad">
-        <div class="card">
-          <div class="card-title">Categories</div>
-          <div class="list" id="cat-list"></div>
-          <div class="row mt-4">
-            <input class="input grow" id="new-cat-name" placeholder="New category name">
-            <input type="color" id="new-cat-color" value="#2563eb" style="width:46px;height:42px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:4px">
-            <button class="btn primary" id="btn-add-cat"><span data-icon="plus"></span></button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Backup &amp; restore</div>
-          <p class="muted">Export all markers and categories as a JSON file, or import a previous export. Import merges — existing items are kept.</p>
-          <div class="row mt-4" style="flex-wrap:wrap">
-            <button class="btn primary" id="btn-export"><span data-icon="download"></span> Export JSON</button>
-            <button class="btn" id="btn-import"><span data-icon="upload"></span> Import JSON</button>
-            <input type="file" id="import-file" accept=".json,application/json" class="hidden">
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Danger zone</div>
-          <p class="muted">Remove all markers and categories from this device. This cannot be undone.</p>
-          <button class="btn danger mt-4" id="btn-clear"><span data-icon="trash"></span> Clear all data</button>
-        </div>
-      </div>
-    </section>
+  <div class="refresh-line"><span id="updStamp">—</span><button onclick="refreshAll()">↻ Refresh now</button></div>
 
-    <!-- SETTINGS VIEW -->
-    <section class="view" data-view="settings">
-      <div class="view-pad">
-        <div class="card">
-          <div class="card-title">Appearance</div>
-          <div class="setting-row">
-            <div class="sr-main"><div class="sr-title">Theme</div><div class="sr-sub">Light, dark or follow system</div></div>
-            <div class="segmented" id="seg-theme">
-              <button data-value="light">Light</button>
-              <button data-value="auto">Auto</button>
-              <button data-value="dark">Dark</button>
-            </div>
-          </div>
-          <div class="setting-row">
-            <div class="sr-main"><div class="sr-title">Map layer</div><div class="sr-sub">Default base map</div></div>
-            <div class="segmented" id="seg-layer">
-              <button data-value="street">Street</button>
-              <button data-value="satellite">Satellite</button>
-            </div>
-          </div>
-          <div class="setting-row">
-            <div class="sr-main"><div class="sr-title">Units</div><div class="sr-sub">Distances on the map</div></div>
-            <div class="segmented" id="seg-units">
-              <button data-value="metric">Metric</button>
-              <button data-value="imperial">Imperial</button>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Security</div>
-          <div class="setting-row">
-            <div class="sr-main"><div class="sr-title">Admin PIN</div><div class="sr-sub">Required to open the Admin area</div></div>
-            <button class="btn sm" id="btn-change-pin">Change PIN</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Session</div>
-          <button class="btn block" id="btn-logout"><span data-icon="logout"></span> Switch role</button>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <!-- Bottom nav (mobile) -->
-  <nav class="bottom-nav">
-    <button class="nav-item active" data-nav="dashboard"><span data-icon="dashboard"></span> Home</button>
-    <button class="nav-item" data-nav="map"><span data-icon="map"></span> Map</button>
-    <button class="nav-item" data-nav="markers"><span data-icon="pin"></span> Markers</button>
-    <button class="nav-item" data-nav="data"><span data-icon="data"></span> Data</button>
-    <button class="nav-item" data-nav="settings"><span data-icon="settings"></span> Settings</button>
-  </nav>
+  <div class="card">
+    <h2>Recent Transactions</h2>
+    <div id="recentTx"><div class="empty">Loading...</div></div>
+  </div>
 </div>
 
-<!-- Marker add/edit modal -->
-<div class="modal-backdrop" id="modal-marker">
-  <div class="modal">
-    <div class="modal-head">
-      <h3 id="mk-title">Add marker</h3>
-      <button class="icon-btn" data-close aria-label="Close"><span data-icon="close"></span></button>
+<!-- ================= PRICES ================= -->
+<div class="section" id="sec-prices">
+  <h1 class="display">Prices</h1><div class="sub">Fuel price management (ETB / liter)</div>
+  <div class="card">
+    <div class="grid2">
+      <div class="field"><label>Diesel</label><input type="number" id="prDiesel" step="0.01" min="0" inputmode="decimal"/></div>
+      <div class="field"><label>Petrol</label><input type="number" id="prPetrol" step="0.01" min="0" inputmode="decimal"/></div>
     </div>
-    <div class="field">
-      <label for="mk-name">Name</label>
-      <input class="input" id="mk-name" placeholder="e.g. Site C">
+    <button class="btn btn-gold" id="priceBtn" onclick="savePrices()">💾 Update Prices</button>
+    <div class="msg" id="priceMsg"></div>
+  </div>
+</div>
+
+<!-- ================= STAFF ================= -->
+<div class="section" id="sec-staff">
+  <h1 class="display">Accounts</h1><div class="sub">Staff approval &amp; roles</div>
+  <div class="card">
+    <div class="card-tools">
+      <input type="search" id="staffSearch" placeholder="🔍 Search name or username…" oninput="renderStaff()"/>
     </div>
-    <div class="field">
-      <label for="mk-cat">Category</label>
-      <select class="input" id="mk-cat"></select>
+    <div class="tabs">
+      <button class="tab active" onclick="setFilter('pending',this)">Pending</button>
+      <button class="tab" onclick="setFilter('approved',this)">Approved</button>
+      <button class="tab" onclick="setFilter('rejected',this)">Rejected</button>
+      <button class="tab" onclick="setFilter('all',this)">All</button>
     </div>
-    <div class="field-row">
-      <div class="field">
-        <label for="mk-lat">Latitude</label>
-        <input class="input" id="mk-lat" type="number" step="any" placeholder="9.0192">
-      </div>
-      <div class="field">
-        <label for="mk-lng">Longitude</label>
-        <input class="input" id="mk-lng" type="number" step="any" placeholder="38.7525">
-      </div>
+    <div id="staffList" class="empty">Loading...</div>
+  </div>
+</div>
+
+<!-- ================= TANKS ================= -->
+<div class="section" id="sec-tanks">
+  <h1 class="display">Tanks</h1><div class="sub">Levels &amp; fuel deliveries</div>
+  <div class="card">
+    <div id="tankList" class="empty">Loading...</div>
+    <div class="divider"></div>
+    <div class="grid2">
+      <div class="field"><label>Tank</label><select id="dvTank"></select></div>
+      <div class="field"><label>Liters Delivered</label><input type="number" id="dvLiters" min="0" step="1" inputmode="numeric"/></div>
     </div>
-    <div class="field">
-      <label for="mk-notes">Notes</label>
-      <textarea class="input" id="mk-notes" placeholder="Optional notes"></textarea>
+    <button class="btn btn-gold" id="dvBtn" onclick="recordDelivery()">🚚 Record Delivery</button>
+    <div class="msg" id="dvMsg"></div>
+  </div>
+</div>
+
+<!-- ================= CREDIT ================= -->
+<div class="section" id="sec-credit">
+  <h1 class="display">Credit</h1><div class="sub">Credit customers &amp; payments</div>
+  <div class="card">
+    <div class="grid2">
+      <div class="field"><label>Name</label><input type="text" id="ccName"/></div>
+      <div class="field"><label>Phone</label><input type="text" id="ccPhone" placeholder="09xxxxxxxx"/></div>
+      <div class="field"><label>Plate No</label><input type="text" id="ccPlate"/></div>
+      <div class="field"><label>Credit Limit (0 = unlimited)</label><input type="number" id="ccLimit" min="0" step="1" value="0"/></div>
     </div>
-    <div class="modal-actions">
-      <button class="btn" data-close>Cancel</button>
-      <button class="btn primary" id="btn-save-marker">Save</button>
+    <button class="btn btn-gold" id="ccBtn" onclick="addCustomer()">➕ Add Customer</button>
+    <div class="msg" id="ccMsg"></div>
+    <div class="divider"></div>
+    <div id="custList" class="empty">Loading...</div>
+  </div>
+</div>
+
+<!-- ================= SALES ================= -->
+<div class="section" id="sec-sales">
+  <h1 class="display">Sales</h1><div class="sub">All transactions (latest 100)</div>
+  <div class="card">
+    <div class="card-tools">
+      <input type="search" id="saleSearch" placeholder="🔍 Search staff / fuel…" oninput="renderSales()"/>
+    </div>
+    <div class="tabs" id="payTabs">
+      <button class="tab active" data-pay="all" onclick="setPayFilter('all',this)">All</button>
+      <button class="tab" data-pay="cash" onclick="setPayFilter('cash',this)">Cash</button>
+      <button class="tab" data-pay="telebirr" onclick="setPayFilter('telebirr',this)">Telebirr</button>
+      <button class="tab" data-pay="cbe" onclick="setPayFilter('cbe',this)">CBE</button>
+      <button class="tab" data-pay="credit" onclick="setPayFilter('credit',this)">Credit</button>
+    </div>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Time</th><th>Staff</th><th>Fuel</th><th>Liters</th><th>ETB</th><th>Pay</th></tr></thead>
+      <tbody id="salesBody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+    </table>
     </div>
   </div>
 </div>
 
-<!-- PIN change modal -->
-<div class="modal-backdrop" id="modal-pin">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Change admin PIN</h3>
-      <button class="icon-btn" data-close aria-label="Close"><span data-icon="close"></span></button>
+<!-- ================= EXPENSES ================= -->
+<div class="section" id="sec-expenses">
+  <h1 class="display">Expenses</h1><div class="sub">Operating costs</div>
+  <div class="card">
+    <div class="grid2">
+      <div class="field"><label>Category</label>
+        <select id="exCat"><option>salary</option><option>electricity</option><option>maintenance</option><option>transport</option><option>other</option></select></div>
+      <div class="field"><label>Amount (ETB)</label><input type="number" id="exAmt" min="0" step="0.01" inputmode="decimal"/></div>
     </div>
-    <div class="field">
-      <label for="pin-current">Current PIN</label>
-      <input class="input" id="pin-current" type="password" inputmode="numeric" maxlength="8" autocomplete="off">
-    </div>
-    <div class="field">
-      <label for="pin-new">New PIN (4–8 digits)</label>
-      <input class="input" id="pin-new" type="password" inputmode="numeric" maxlength="8" autocomplete="off">
-    </div>
-    <div class="modal-actions">
-      <button class="btn" data-close>Cancel</button>
-      <button class="btn primary" id="btn-save-pin">Save PIN</button>
+    <div class="field"><label>Description</label><input type="text" id="exDesc"/></div>
+    <button class="btn btn-gold" id="exBtn" onclick="addExpense()">➕ Record Expense</button>
+    <div class="msg" id="exMsg"></div>
+    <div class="divider"></div>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>ETB</th></tr></thead>
+      <tbody id="exBody"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+    </table>
     </div>
   </div>
 </div>
 
-<script src="js/store.js"></script>
-<script src="js/app.js"></script>
-<script src="js/map.js"></script>
+<!-- ================= REPORTS ================= -->
+<div class="section" id="sec-reports">
+  <h1 class="display">Reports</h1><div class="sub">Performance &amp; profit</div>
+  <div class="card" id="printArea">
+    <h2 style="display:flex;justify-content:space-between;align-items:center">📊 Daily Report (7 days)
+      <button class="btn btn-blue no-print" onclick="window.print()">🖨 Print</button></h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Day</th><th>Sales</th><th>Liters</th><th>Revenue</th><th>Expenses</th><th>Net ETB</th></tr></thead>
+      <tbody id="reportBody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+    <div class="divider"></div>
+    <h2>⛽ Fuel Totals (7 days)</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Fuel</th><th>Sales</th><th>Liters</th><th>Revenue ETB</th></tr></thead>
+      <tbody id="fuelRepBody"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+    <div class="divider"></div>
+    <h2>🏆 Staff Performance (7 days)</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Staff</th><th>Diesel L</th><th>Diesel ETB</th><th>Petrol L</th><th>Petrol ETB</th><th>Total L</th><th>Total ETB</th></tr></thead>
+      <tbody id="staffRepBody"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SHIFTS ================= -->
+<div class="section" id="sec-shifts">
+  <h1 class="display">Shifts</h1><div class="sub">Shifts, meters &amp; attendance</div>
+  <div class="card">
+    <h2>🕒 Shifts</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Staff</th><th>Opened</th><th>Open M</th><th>Close M</th><th>Liters</th><th>Status</th></tr></thead>
+      <tbody id="shiftBody"><tr><td colspan="6" class="empty">No shifts yet</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>⛽ Nozzle Readings</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Staff</th><th>Nozzle</th><th>Fuel</th><th>Open</th><th>Close</th><th>Liters</th></tr></thead>
+      <tbody id="nrBody"><tr><td colspan="6" class="empty">No readings yet</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>🕐 Attendance Log</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Staff</th><th>Check In</th><th>Check Out</th><th>Hours</th></tr></thead>
+      <tbody id="attBody"><tr><td colspan="4" class="empty">No attendance yet</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- Bottom quick-nav (mobile) -->
+<nav class="bottom-nav">
+  <button class="bn-item active" data-s="dashboard" onclick="go('dashboard',this)"><span class="ic">📊</span>Home</button>
+  <button class="bn-item" data-s="prices" onclick="go('prices',this)"><span class="ic">💲</span>Prices</button>
+  <button class="bn-item" data-s="sales" onclick="go('sales',this)"><span class="ic">💰</span>Sales</button>
+  <button class="bn-item" data-s="reports" onclick="go('reports',this)"><span class="ic">📈</span>Reports</button>
+  <button class="bn-item" onclick="toggleMenu()"><span class="ic">☰</span>More</button>
+</nav>
+
+</div>
+
+<script src="config.js"></script>
+<script src="js/ui.js"></script>
 <script>
-(function () {
-  if (!App.requireRole("admin")) return;
-  App.renderIcons();
-  App.applyTheme();
+let session=null, allStaff=[], allSales=[], filter='pending', payFilter='all';
 
-  var TITLES = { dashboard: "Dashboard", map: "Map", markers: "Markers", data: "Data", settings: "Settings" };
-  document.addEventListener("viewchange", function (e) {
-    document.getElementById("page-title").textContent = TITLES[e.detail.view] || "MAGPMS";
-    if (e.detail.view === "dashboard") renderDashboard();
-    if (e.detail.view === "data") renderCategories();
-  });
+function logout(){localStorage.removeItem('magpms_admin');location.href='index.html';}
 
-  var activeCat = null;
-  var editId = null;   // null = adding
-
-  /* ---------- marker modal ---------- */
-  function fillCatSelect(selected) {
-    var sel = document.getElementById("mk-cat");
-    sel.innerHTML = Store.getCategories().map(function (c) {
-      return '<option value="' + c.id + '"' + (c.id === selected ? " selected" : "") + ">" + App.escapeHtml(c.name) + "</option>";
-    }).join("");
-  }
-
-  function openMarkerModal(id, presetLat, presetLng) {
-    editId = id || null;
-    var m = id ? Store.getMarker(id) : null;
-    document.getElementById("mk-title").textContent = m ? "Edit marker" : "Add marker";
-    document.getElementById("mk-name").value = m ? m.name : "";
-    document.getElementById("mk-lat").value = m ? m.lat : (presetLat !== undefined ? presetLat.toFixed(6) : "");
-    document.getElementById("mk-lng").value = m ? m.lng : (presetLng !== undefined ? presetLng.toFixed(6) : "");
-    document.getElementById("mk-notes").value = m ? m.notes : "";
-    fillCatSelect(m ? m.category : Store.getCategories()[0].id);
-    App.openModal("modal-marker");
-  }
-
-  document.getElementById("btn-save-marker").addEventListener("click", function () {
-    var name = document.getElementById("mk-name").value.trim();
-    var lat = parseFloat(document.getElementById("mk-lat").value);
-    var lng = parseFloat(document.getElementById("mk-lng").value);
-    if (!name) { App.toast("Name is required", "danger"); return; }
-    if (isNaN(lat) || lat < -90 || lat > 90) { App.toast("Latitude must be −90…90", "danger"); return; }
-    if (isNaN(lng) || lng < -180 || lng > 180) { App.toast("Longitude must be −180…180", "danger"); return; }
-    var payload = {
-      name: name,
-      category: document.getElementById("mk-cat").value,
-      lat: lat, lng: lng,
-      notes: document.getElementById("mk-notes").value
-    };
-    if (editId) { Store.updateMarker(editId, payload); App.toast("Marker updated"); }
-    else { Store.addMarker(payload); App.toast("Marker added"); }
-    App.closeModal("modal-marker");
-    refreshAll();
-  });
-
-  /* ---------- markers list ---------- */
-  function renderChips() {
-    var host = document.getElementById("cat-chips");
-    var html = '<button class="chip' + (activeCat === null ? " active" : "") + '" data-cat="">All</button>';
-    Store.getCategories().forEach(function (c) {
-      html += '<button class="chip' + (activeCat === c.id ? " active" : "") + '" data-cat="' + c.id + '">' +
-        '<span class="dot" style="background:' + c.color + '"></span>' + App.escapeHtml(c.name) + "</button>";
-    });
-    host.innerHTML = html;
-    host.querySelectorAll(".chip").forEach(function (ch) {
-      ch.addEventListener("click", function () {
-        activeCat = ch.getAttribute("data-cat") || null;
-        renderChips(); renderList();
-      });
-    });
-  }
-
-  function renderList() {
-    var q = document.getElementById("search").value.trim().toLowerCase();
-    var host = document.getElementById("marker-list");
-    var items = Store.getMarkers().filter(function (m) {
-      if (activeCat && m.category !== activeCat) return false;
-      if (q && m.name.toLowerCase().indexOf(q) < 0 && (m.notes || "").toLowerCase().indexOf(q) < 0) return false;
-      return true;
-    });
-    if (!items.length) {
-      host.innerHTML = '<div class="empty">' + App.icon("pin") + "<p>No markers found</p></div>";
-      return;
+/* DASHBOARD */
+async function loadDashboard(){
+  try{
+    const [sales,tanks,custs,att]=await Promise.all([
+      rpc('list_sales',{p_staff_id:null,p_limit:100}),
+      rpc('list_tanks',{}),
+      rpc('list_credit_customers',{}),
+      rpc('admin_list_attendance',{p_limit:100})
+    ]);
+    if(Array.isArray(sales)){
+      const live=sales.filter(s=>!s.voided);
+      const rev=live.reduce((a,s)=>a+Number(s.total_etb||0),0);
+      document.getElementById('dTotalSales').textContent=rev.toLocaleString(undefined,{maximumFractionDigits:0});
+      const tx=document.getElementById('recentTx');
+      const recent=live.slice(0,8);
+      tx.innerHTML=recent.length?recent.map(s=>{
+        const t=new Date(s.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        return `<div class="tx"><div class="l"><h4>${s.fuel_type} · ${s.liters} L</h4>
+          <p>${esc(s.staff_name)} · ${t} · ${esc(s.payment_method)}</p></div>
+          <div class="amt">+${Number(s.total_etb).toFixed(0)} ETB</div></div>`;
+      }).join(''):'<div class="empty">No transactions yet</div>';
     }
-    host.innerHTML = items.map(function (m) {
-      var cat = Store.getCategory(m.category);
-      return '<div class="list-item" data-id="' + m.id + '">' +
-        '<span class="cat-dot" style="background:' + cat.color + '"></span>' +
-        '<span class="li-main"><span class="li-title">' + App.escapeHtml(m.name) + "</span><br>" +
-        '<span class="li-sub">' + App.escapeHtml(cat.name) + " · " + App.fmtCoord(m.lat) + ", " + App.fmtCoord(m.lng) + "</span></span>" +
-        '<span class="li-actions">' +
-        '<button class="icon-btn" data-act="show" aria-label="Show on map">' + App.icon("map") + "</button>" +
-        '<button class="icon-btn" data-act="edit" aria-label="Edit">' + App.icon("edit") + "</button>" +
-        '<button class="icon-btn" data-act="del" aria-label="Delete">' + App.icon("trash") + "</button>" +
-        "</span></div>";
-    }).join("");
-    host.querySelectorAll(".list-item").forEach(function (el) {
-      var id = el.getAttribute("data-id");
-      el.querySelector('[data-act="show"]').addEventListener("click", function (e) {
-        e.stopPropagation();
-        var m = Store.getMarker(id);
-        App.switchView("map");
-        if (!MagMap.focus(m.lat, m.lng)) App.toast("Map is offline", "danger");
-      });
-      el.querySelector('[data-act="edit"]').addEventListener("click", function (e) {
-        e.stopPropagation(); openMarkerModal(id);
-      });
-      el.querySelector('[data-act="del"]').addEventListener("click", function (e) {
-        e.stopPropagation();
-        var m = Store.getMarker(id);
-        App.confirmDialog("Delete marker", 'Delete "' + m.name + '"? This cannot be undone.', function () {
-          Store.deleteMarker(id);
-          App.toast("Marker deleted");
-          refreshAll();
-        });
-      });
-    });
-  }
-
-  /* ---------- dashboard ---------- */
-  function renderDashboard() {
-    var markers = Store.getMarkers();
-    var cats = Store.getCategories();
-    var html = '<div class="stat"><div class="stat-value">' + markers.length + '</div><div class="stat-label">Total markers</div></div>';
-    cats.forEach(function (c) {
-      var n = markers.filter(function (m) { return m.category === c.id; }).length;
-      html += '<div class="stat"><div class="stat-value"><span class="dot" style="background:' + c.color + '"></span>' + n + "</div>" +
-        '<div class="stat-label">' + App.escapeHtml(c.name) + "</div></div>";
-    });
-    document.getElementById("stats").innerHTML = html;
-
-    var recent = markers.slice().sort(function (a, b) { return b.createdAt - a.createdAt; }).slice(0, 5);
-    var rl = document.getElementById("recent-list");
-    if (!recent.length) {
-      rl.innerHTML = '<div class="empty">' + App.icon("pin") + "<p>No markers yet — add your first one</p></div>";
-    } else {
-      rl.innerHTML = recent.map(function (m) {
-        var cat = Store.getCategory(m.category);
-        return '<div class="list-item" data-id="' + m.id + '">' +
-          '<span class="cat-dot" style="background:' + cat.color + '"></span>' +
-          '<span class="li-main"><span class="li-title">' + App.escapeHtml(m.name) + "</span><br>" +
-          '<span class="li-sub">' + App.escapeHtml(cat.name) + " · " + new Date(m.createdAt).toLocaleDateString() + "</span></span></div>";
-      }).join("");
-      rl.querySelectorAll(".list-item").forEach(function (el) {
-        el.addEventListener("click", function () { openMarkerModal(el.getAttribute("data-id")); });
-      });
+    if(Array.isArray(tanks)){
+      const stock=tanks.reduce((a,t)=>a+Number(t.current_liters||0),0);
+      document.getElementById('dFuelStock').textContent=stock.toLocaleString(undefined,{maximumFractionDigits:0});
+      document.getElementById('dStockBadge').classList.toggle('hidden',UI.lowTankCount(tanks)===0);
     }
-  }
+    if(Array.isArray(custs)){
+      const cb=custs.reduce((a,c)=>a+Number(c.balance||0),0);
+      document.getElementById('dCredit').textContent=cb.toLocaleString(undefined,{maximumFractionDigits:0});
+    }
+    if(Array.isArray(att)){
+      const on=att.filter(a=>!a.check_out).length;
+      document.getElementById('dOnDuty').textContent=on;
+    }
+    UI.stampUpdated('updStamp');
+  }catch(e){}
+}
 
-  /* ---------- categories ---------- */
-  function renderCategories() {
-    var host = document.getElementById("cat-list");
-    host.innerHTML = Store.getCategories().map(function (c) {
-      return '<div class="list-item" style="cursor:default" data-id="' + c.id + '">' +
-        '<span class="cat-dot" style="background:' + c.color + '"></span>' +
-        '<span class="li-main"><span class="li-title">' + App.escapeHtml(c.name) + "</span></span>" +
-        '<span class="li-actions"><button class="icon-btn" data-act="del" aria-label="Delete">' + App.icon("trash") + "</button></span></div>";
-    }).join("");
-    host.querySelectorAll('[data-act="del"]').forEach(function (b) {
-      b.addEventListener("click", function () {
-        var id = b.closest(".list-item").getAttribute("data-id");
-        App.confirmDialog("Delete category", "Markers in this category will move to \"Other\".", function () {
-          Store.deleteCategory(id);
-          App.toast("Category deleted");
-          refreshAll(); renderCategories();
-        });
-      });
-    });
-  }
+/* PRICES */
+async function loadPrices(){
+  try{const r=await rpc('get_prices',{});
+    if(Array.isArray(r))r.forEach(p=>{
+      if(p.fuel_type==='Diesel')document.getElementById('prDiesel').value=p.price_per_liter;
+      if(p.fuel_type==='Petrol')document.getElementById('prPetrol').value=p.price_per_liter;});
+  }catch(e){}
+}
+async function savePrices(){
+  const d=parseFloat(document.getElementById('prDiesel').value);
+  const p=parseFloat(document.getElementById('prPetrol').value);
+  if(!d||!p||d<=0||p<=0){msg('priceMsg','Enter valid prices','error');return;}
+  const btn=document.getElementById('priceBtn');btn.disabled=true;
+  try{
+    const r1=await rpc('admin_set_price',{p_admin_id:session.id,p_fuel_type:'Diesel',p_price:d});
+    const r2=await rpc('admin_set_price',{p_admin_id:session.id,p_fuel_type:'Petrol',p_price:p});
+    const ok=r1.success&&r2.success;
+    msg('priceMsg',ok?'Prices updated':'Error updating',ok?'success':'error');
+    if(ok)UI.toast('Prices updated ✔','ok');
+  }catch(e){msg('priceMsg','Connection error','error');}
+  finally{btn.disabled=false;}
+}
 
-  document.getElementById("btn-add-cat").addEventListener("click", function () {
-    var name = document.getElementById("new-cat-name").value.trim();
-    if (!name) { App.toast("Category name required", "danger"); return; }
-    Store.addCategory(name, document.getElementById("new-cat-color").value);
-    document.getElementById("new-cat-name").value = "";
-    App.toast("Category added");
-    renderCategories(); renderChips();
-  });
+/* STAFF */
+function setFilter(f,btn){filter=f;document.querySelectorAll('#sec-staff .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderStaff();}
+function renderStaff(){
+  const list=document.getElementById('staffList');
+  const q=(document.getElementById('staffSearch').value||'').trim().toLowerCase();
+  let rows=filter==='all'?allStaff:allStaff.filter(s=>s.status===filter);
+  if(q)rows=rows.filter(s=>(s.full_name||'').toLowerCase().includes(q)||(s.username||'').toLowerCase().includes(q));
+  if(rows.length===0){list.className='empty';list.textContent='No staff in this category';return;}
+  list.className='';
+  list.innerHTML=rows.map(s=>`
+    <div class="row"><div class="info">
+      <h3>${esc(s.full_name)}</h3>
+      <p>@${esc(s.username)}${s.phone?' · '+esc(s.phone):''} · ${esc(s.role)}</p>
+      <span class="tag ${s.status}">${s.status}</span></div>
+    <div style="display:grid;gap:6px;justify-items:end">
+      <div>
+      ${s.status!=='approved'?`<button class="btn btn-ok" onclick="setStatus('${s.id}','approved')">Approve</button> `:''}
+      ${s.status!=='rejected'?`<button class="btn btn-no" onclick="setStatus('${s.id}','rejected')">Reject</button>`:''}
+      </div>
+      <select style="width:auto;padding:5px 9px;font-size:12px" onchange="setRole('${s.id}',this.value)">
+        <option value="operator" ${s.role==='operator'?'selected':''}>operator</option>
+        <option value="accountant" ${s.role==='accountant'?'selected':''}>accountant</option>
+        <option value="manager" ${s.role==='manager'?'selected':''}>manager</option>
+      </select>
+    </div></div>`).join('');
+}
+async function setStatus(id,status){
+  const r=await rpc('admin_set_staff_status',{p_staff_id:id,p_admin_id:session.id,p_status:status});
+  if(r.success){UI.toast('Staff '+status,status==='approved'?'ok':undefined);loadStaff();}
+  else UI.toast(r.message||'Failed','err');
+}
+async function setRole(staffId,role){
+  const r=await rpc('admin_set_staff_role',{p_admin_id:session.id,p_staff_id:staffId,p_role:role});
+  if(!r.success)UI.toast(r.message||'Failed','err');else UI.toast('Role updated','ok');
+  loadStaff();
+}
+async function loadStaff(){
+  try{const r=await rpc('admin_list_staff',{p_status:null});allStaff=Array.isArray(r)?r:[];renderStaff();}catch(e){}
+}
 
-  /* ---------- data controls ---------- */
-  function doExport() {
-    App.downloadText("magpms-export-" + new Date().toISOString().slice(0, 10) + ".json", Store.exportJSON());
-    App.toast("Export downloaded");
-  }
-  document.getElementById("btn-export").addEventListener("click", doExport);
-  document.getElementById("qa-export").addEventListener("click", doExport);
+/* TANKS */
+async function loadTanks(){
+  try{
+    const tanks=await rpc('list_tanks',{});
+    if(!Array.isArray(tanks))return;
+    const el=document.getElementById('tankList');el.className='';
+    el.innerHTML=tanks.map(t=>UI.tankRow(t)).join('');
+    document.getElementById('dvTank').innerHTML=tanks.map(t=>
+      `<option value="${t.id}">${t.tank_name} (${t.fuel_type})</option>`).join('');
+  }catch(e){}
+}
+async function recordDelivery(){
+  const tank=parseInt(document.getElementById('dvTank').value);
+  const liters=parseFloat(document.getElementById('dvLiters').value);
+  if(!tank||!liters||liters<=0){msg('dvMsg','Select tank and enter liters','error');return;}
+  const btn=document.getElementById('dvBtn');btn.disabled=true;
+  try{
+    const r=await rpc('admin_record_delivery',{p_admin_id:session.id,p_tank_id:tank,p_liters:liters});
+    msg('dvMsg',r.message,r.success?'success':'error');
+    if(r.success){UI.toast('Delivery recorded ✔','ok');document.getElementById('dvLiters').value='';loadTanks();loadDashboard();}
+  }catch(e){msg('dvMsg','Connection error','error');}
+  finally{btn.disabled=false;}
+}
 
-  document.getElementById("btn-import").addEventListener("click", function () {
-    document.getElementById("import-file").click();
-  });
-  document.getElementById("import-file").addEventListener("change", function () {
-    var f = this.files[0];
-    if (!f) return;
-    var reader = new FileReader();
-    reader.onload = function () {
-      try {
-        var added = Store.importJSON(reader.result);
-        App.toast("Imported " + added + " marker" + (added === 1 ? "" : "s"));
-        refreshAll(); renderCategories();
-      } catch (err) {
-        App.toast("Import failed: " + err.message, "danger");
-      }
-    };
-    reader.readAsText(f);
-    this.value = "";
-  });
+/* CREDIT */
+async function addCustomer(){
+  const name=document.getElementById('ccName').value.trim();
+  const phone=document.getElementById('ccPhone').value.trim();
+  const plate=document.getElementById('ccPlate').value.trim();
+  const lim=parseFloat(document.getElementById('ccLimit').value)||0;
+  if(!name){msg('ccMsg','Enter customer name','error');return;}
+  const btn=document.getElementById('ccBtn');btn.disabled=true;
+  try{
+    const r=await rpc('admin_add_credit_customer',{p_admin_id:session.id,p_name:name,p_phone:phone,p_plate:plate,p_limit:lim});
+    msg('ccMsg',r.message,r.success?'success':'error');
+    if(r.success){['ccName','ccPhone','ccPlate'].forEach(i=>document.getElementById(i).value='');document.getElementById('ccLimit').value='0';loadCustomers();loadDashboard();}
+  }catch(e){msg('ccMsg','Connection error','error');}
+  finally{btn.disabled=false;}
+}
+async function payCredit(id,name){
+  const amt=await UI.promptNumber('Credit Payment','Record a payment from '+name+'.','Payment amount (ETB)');
+  if(!amt||amt<=0)return;
+  const r=await rpc('admin_credit_payment',{p_admin_id:session.id,p_customer_id:id,p_amount:amt});
+  UI.toast(r.message||'Done',r.success?'ok':'err');
+  if(r.success){loadCustomers();loadDashboard();}
+}
+async function loadCustomers(){
+  try{
+    const r=await rpc('list_credit_customers',{});
+    const el=document.getElementById('custList');
+    if(!Array.isArray(r)||r.length===0){el.className='empty';el.textContent='No credit customers yet';return;}
+    el.className='';
+    el.innerHTML=r.map(c=>`
+      <div class="row"><div class="info">
+        <h3>${esc(c.name)}</h3>
+        <p>${c.plate_no?esc(c.plate_no)+' · ':''}${c.phone?esc(c.phone)+' · ':''}limit ${Number(c.credit_limit)>0?Number(c.credit_limit).toLocaleString():'∞'} ETB</p>
+        <span class="tag ${Number(c.balance)>0?'pending':'approved'}">owes ${Number(c.balance).toFixed(2)} ETB</span></div>
+      <div>${Number(c.balance)>0?`<button class="btn btn-blue" onclick="payCredit('${c.id}','${esc(c.name)}')">💵 Payment</button>`:''}</div>
+      </div>`).join('');
+  }catch(e){}
+}
 
-  document.getElementById("btn-clear").addEventListener("click", function () {
-    App.confirmDialog("Clear all data", "All markers and categories on this device will be permanently removed.", function () {
-      Store.clearAll();
-      App.toast("All data cleared");
-      refreshAll(); renderCategories();
-    });
-  });
+/* SALES */
+function setPayFilter(p,btn){payFilter=p;document.querySelectorAll('#payTabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderSales();}
+function renderSales(){
+  const tb=document.getElementById('salesBody');
+  const q=(document.getElementById('saleSearch').value||'').trim().toLowerCase();
+  let rows=allSales;
+  if(payFilter!=='all')rows=rows.filter(s=>(s.payment_method||'').toLowerCase()===payFilter);
+  if(q)rows=rows.filter(s=>(s.staff_name||'').toLowerCase().includes(q)||(s.fuel_type||'').toLowerCase().includes(q));
+  if(rows.length===0){tb.innerHTML='<tr><td colspan="6" class="empty">No matching sales</td></tr>';return;}
+  tb.innerHTML=rows.map(s=>{
+    const t=new Date(s.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const style=s.voided?' style="opacity:.4;text-decoration:line-through"':'';
+    const act=s.voided?'<span class="tag rejected">void</span>':`<button class="btn btn-no" style="padding:4px 9px;font-size:11px" onclick="voidSale('${s.id}')">Void</button>`;
+    return `<tr${style}><td class="mono">${t}</td><td>${esc(s.staff_name)}</td><td>${s.fuel_type}</td>
+      <td class="mono">${s.liters}</td><td class="mono">${Number(s.total_etb).toFixed(2)}</td><td>${esc(s.payment_method)} ${act}</td></tr>`;
+  }).join('');
+}
+async function loadSales(){
+  try{
+    const sales=await rpc('list_sales',{p_staff_id:null,p_limit:100});
+    allSales=Array.isArray(sales)?sales:[];
+    renderSales();
+  }catch(e){}
+}
+async function voidSale(id){
+  const ok=await UI.confirmDlg('Void Sale','Void this sale? Tank stock and credit balance will be reversed.','Void Sale');
+  if(!ok)return;
+  const r=await rpc('admin_void_sale',{p_admin_id:session.id,p_sale_id:id});
+  UI.toast(r.message||'Done',r.success?'ok':'err');
+  if(r.success){loadSales();loadTanks();loadCustomers();loadReports();loadDashboard();}
+}
 
-  /* ---------- wiring ---------- */
-  function refreshAll() {
-    renderChips(); renderList(); renderDashboard();
-    if (MagMap.isReady()) MagMap.render();
-  }
+/* EXPENSES */
+async function addExpense(){
+  const cat=document.getElementById('exCat').value;
+  const amt=parseFloat(document.getElementById('exAmt').value);
+  const desc=document.getElementById('exDesc').value.trim();
+  if(!amt||amt<=0){msg('exMsg','Enter valid amount','error');return;}
+  const btn=document.getElementById('exBtn');btn.disabled=true;
+  try{
+    const r=await rpc('admin_add_expense',{p_admin_id:session.id,p_category:cat,p_description:desc,p_amount:amt});
+    msg('exMsg',r.message,r.success?'success':'error');
+    if(r.success){UI.toast('Expense recorded ✔','ok');document.getElementById('exAmt').value='';document.getElementById('exDesc').value='';loadExpenses();loadReports();}
+  }catch(e){msg('exMsg','Connection error','error');}
+  finally{btn.disabled=false;}
+}
+async function loadExpenses(){
+  try{
+    const r=await rpc('list_expenses',{p_limit:50});
+    const tb=document.getElementById('exBody');
+    if(!Array.isArray(r)||r.length===0){tb.innerHTML='<tr><td colspan="4" class="empty">No expenses yet</td></tr>';return;}
+    tb.innerHTML=r.map(e=>{
+      const t=new Date(e.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit'});
+      return `<tr><td class="mono">${t}</td><td>${esc(e.category)}</td><td>${esc(e.description||'')}</td><td class="mono">${Number(e.amount_etb).toFixed(2)}</td></tr>`;
+    }).join('');
+  }catch(e){}
+}
 
-  document.getElementById("search").addEventListener("input", renderList);
-  document.getElementById("btn-add-marker").addEventListener("click", function () { openMarkerModal(null); });
-  document.getElementById("qa-add").addEventListener("click", function () { openMarkerModal(null); });
-  document.getElementById("qa-map").addEventListener("click", function () { App.switchView("map"); });
-  document.getElementById("btn-logout-side").addEventListener("click", function () {
-    Store.clearRole();
-    location.href = "index.html";
-  });
+/* REPORTS */
+async function loadReports(){
+  try{
+    const days=await rpc('daily_report',{p_days:7});
+    const tb=document.getElementById('reportBody');
+    if(Array.isArray(days)&&days.length){
+      tb.innerHTML=days.map(d=>{
+        const dt=new Date(d.day).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'2-digit'});
+        const net=Number(d.net_etb);
+        return `<tr><td>${dt}</td><td class="mono">${d.sales_count}</td><td class="mono">${Number(d.liters).toFixed(1)}</td>
+          <td class="mono">${Number(d.revenue_etb).toFixed(2)}</td><td class="mono">${Number(d.expenses_etb).toFixed(2)}</td>
+          <td class="mono" style="color:${net>=0?'var(--success)':'var(--danger)'}">${net.toFixed(2)}</td></tr>`;
+      }).join('');
+    }else{tb.innerHTML='<tr><td colspan="6" class="empty">No data</td></tr>';}
+    /* fuel totals */
+    const fuel=await rpc('fuel_report',{p_days:7});
+    const fb=document.getElementById('fuelRepBody');
+    if(Array.isArray(fuel)&&fuel.length){
+      const fl=fuel.reduce((a,f)=>a+Number(f.liters),0);
+      const fr=fuel.reduce((a,f)=>a+Number(f.revenue_etb),0);
+      const fc=fuel.reduce((a,f)=>a+Number(f.sales_count),0);
+      fb.innerHTML=fuel.map(f=>`<tr><td>${f.fuel_type}</td><td class="mono">${f.sales_count}</td>
+        <td class="mono">${Number(f.liters).toFixed(1)}</td><td class="mono">${Number(f.revenue_etb).toFixed(2)}</td></tr>`).join('')
+        +`<tr style="font-weight:700;color:var(--accent)"><td>TOTAL</td><td class="mono">${fc}</td>
+        <td class="mono">${fl.toFixed(1)}</td><td class="mono">${fr.toFixed(2)}</td></tr>`;
+    }else{fb.innerHTML='<tr><td colspan="4" class="empty">No data</td></tr>';}
 
-  App.initSettingsPanel({ admin: true });
-  refreshAll();
-  MagMap.init({
-    onMarkerClick: function (id) { openMarkerModal(id); },
-    onMapClick: function (lat, lng) { openMarkerModal(null, lat, lng); }
-  });
+    /* staff with fuel breakdown */
+    const staff=await rpc('staff_report_v2',{p_days:7});
+    const sb=document.getElementById('staffRepBody');
+    if(Array.isArray(staff)&&staff.length){
+      const T={dl:0,de:0,pl:0,pe:0,tl:0,te:0};
+      sb.innerHTML=staff.map(s=>{
+        T.dl+=Number(s.diesel_liters);T.de+=Number(s.diesel_etb);
+        T.pl+=Number(s.petrol_liters);T.pe+=Number(s.petrol_etb);
+        T.tl+=Number(s.total_liters);T.te+=Number(s.total_etb);
+        return `<tr><td>${esc(s.staff_name)}</td>
+        <td class="mono">${Number(s.diesel_liters).toFixed(1)}</td><td class="mono">${Number(s.diesel_etb).toFixed(0)}</td>
+        <td class="mono">${Number(s.petrol_liters).toFixed(1)}</td><td class="mono">${Number(s.petrol_etb).toFixed(0)}</td>
+        <td class="mono">${Number(s.total_liters).toFixed(1)}</td><td class="mono">${Number(s.total_etb).toFixed(2)}</td></tr>`;
+      }).join('')
+      +`<tr style="font-weight:700;color:var(--accent)"><td>TOTAL</td>
+        <td class="mono">${T.dl.toFixed(1)}</td><td class="mono">${T.de.toFixed(0)}</td>
+        <td class="mono">${T.pl.toFixed(1)}</td><td class="mono">${T.pe.toFixed(0)}</td>
+        <td class="mono">${T.tl.toFixed(1)}</td><td class="mono">${T.te.toFixed(2)}</td></tr>`;
+    }else{sb.innerHTML='<tr><td colspan="7" class="empty">No data</td></tr>';}
+  }catch(e){}
+}
+
+/* SHIFTS + READINGS + ATTENDANCE */
+async function loadShifts(){
+  try{
+    const r=await rpc('admin_list_shifts',{p_limit:50});
+    const tb=document.getElementById('shiftBody');
+    if(!Array.isArray(r)||r.length===0){tb.innerHTML='<tr><td colspan="6" class="empty">No shifts yet</td></tr>';return;}
+    tb.innerHTML=r.map(sh=>{
+      const opened=new Date(sh.opened_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const liters=(sh.closing_meter!=null&&sh.opening_meter!=null)?(sh.closing_meter-sh.opening_meter).toFixed(1):'—';
+      return `<tr><td>${esc(sh.staff_name)}</td><td class="mono">${opened}</td>
+        <td class="mono">${sh.opening_meter??'—'}</td><td class="mono">${sh.closing_meter??'—'}</td>
+        <td class="mono">${liters}</td><td><span class="tag ${sh.status}">${sh.status}</span></td></tr>`;
+    }).join('');
+  }catch(e){}
+}
+async function loadReadings(){
+  try{
+    const r=await rpc('admin_list_readings',{p_limit:100});
+    const tb=document.getElementById('nrBody');
+    if(!Array.isArray(r)||r.length===0){tb.innerHTML='<tr><td colspan="6" class="empty">No readings yet</td></tr>';return;}
+    tb.innerHTML=r.map(x=>`<tr><td>${esc(x.staff_name)}</td><td>${x.nozzle_name}</td><td>${x.fuel_type}</td>
+      <td class="mono">${x.opening}</td><td class="mono">${x.closing??'—'}</td>
+      <td class="mono">${x.liters!=null?Number(x.liters).toFixed(1):'—'}</td></tr>`).join('');
+  }catch(e){}
+}
+async function loadAttendance(){
+  try{
+    const r=await rpc('admin_list_attendance',{p_limit:100});
+    const tb=document.getElementById('attBody');
+    if(!Array.isArray(r)||r.length===0){tb.innerHTML='<tr><td colspan="4" class="empty">No attendance yet</td></tr>';return;}
+    tb.innerHTML=r.map(a=>{
+      const ci=new Date(a.check_in);
+      const co=a.check_out?new Date(a.check_out):null;
+      const hrs=co?((co-ci)/3600000).toFixed(1)+' h':'<span class="tag open">on duty</span>';
+      const f=d=>d.toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      return `<tr><td>${esc(a.staff_name)}</td><td class="mono">${f(ci)}</td>
+        <td class="mono">${co?f(co):'—'}</td><td class="mono">${hrs}</td></tr>`;
+    }).join('');
+  }catch(e){}
+}
+
+function refreshAll(){
+  loadDashboard();loadTanks();loadSales();loadCustomers();
+}
+
+(function init(){
+  session=JSON.parse(localStorage.getItem('magpms_admin')||'null');
+  if(!session||!session.success){location.href='index.html';return;}
+  document.getElementById('whoami').textContent=session.full_name;
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+  loadDashboard();loadPrices();loadStaff();loadTanks();loadCustomers();
+  loadSales();loadExpenses();loadReports();loadShifts();loadReadings();loadAttendance();
+  setInterval(loadDashboard,60000);
 })();
 </script>
 </body>

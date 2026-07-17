@@ -1,110 +1,120 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="auto">
+<html lang="en" data-theme="dark">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1d4ed8">
-<title>MAGPMS — Magmaps</title>
-<link rel="stylesheet" href="css/theme.css">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#0e1520"/>
+<title>MAGPMS — Cloud Fuel Station</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/theme.css"/>
 </head>
 <body>
+<button class="theme-btn login-theme" id="themeBtn" aria-label="Switch theme">🌙</button>
 
-<div class="entry">
-  <div class="entry-card">
-    <div class="entry-logo"><span data-icon="compass"></span></div>
-    <h1>MAGPMS</h1>
-    <p class="tagline">Magmaps — field mapping &amp; site control</p>
-
-    <div class="role-cards">
-      <button class="role-card" id="btn-staff">
-        <span class="rc-icon"><span data-icon="user"></span></span>
-        <span class="grow">
-          <span class="rc-title">Staff</span><br>
-          <span class="rc-sub">View the map, sites and markers</span>
-        </span>
-      </button>
-      <button class="role-card admin" id="btn-admin">
-        <span class="rc-icon"><span data-icon="shield"></span></span>
-        <span class="grow">
-          <span class="rc-title">Admin</span><br>
-          <span class="rc-sub">Full control — manage markers, data &amp; settings</span>
-        </span>
-      </button>
+<div id="loginPage">
+  <div class="login-wrap">
+    <div class="login-brand">
+      <div class="logo-ring">⛽</div>
+      <h1>MAGPMS</h1>
+      <p>Mohamed Abdu Hirna Gomeju Petroleum — Hirna Town, Oromia</p>
+      <span class="cloud-tag">☁ Supabase Cloud</span>
     </div>
 
-    <p class="continue muted" id="continue-hint"></p>
+    <!-- LOGIN CARD -->
+    <div class="login-card" id="loginCard">
+      <div class="role-tabs">
+        <button class="role-tab active" data-role="staff" onclick="setRole('staff',this)">👷 Staff</button>
+        <button class="role-tab" data-role="admin" onclick="setRole('admin',this)">🛡 Admin</button>
+      </div>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="lgUser" autocomplete="username"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="lgPass" autocomplete="current-password"/>
+      </div>
+      <button class="btn btn-gold" id="lgBtn" onclick="doLogin()">🔐 Sign In</button>
+      <div class="msg" id="lgMsg"></div>
+      <div class="switch-link">New staff member? <a onclick="showSignup()">Create account</a></div>
+    </div>
+
+    <!-- SIGNUP CARD -->
+    <div class="login-card hidden" id="signupCard">
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="suName"/>
+      </div>
+      <div class="field">
+        <label>Phone</label>
+        <input type="text" id="suPhone" placeholder="09xxxxxxxx"/>
+      </div>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="suUser"/>
+      </div>
+      <div class="field">
+        <label>Password (min 6)</label>
+        <input type="password" id="suPass"/>
+      </div>
+      <button class="btn btn-gold" id="suBtn" onclick="doSignup()">✍ Create Staff Account</button>
+      <div class="msg" id="suMsg"></div>
+      <div class="field-hint">Account requires admin approval before login</div>
+      <div class="switch-link">Already have an account? <a onclick="showLogin()">Sign in</a></div>
+    </div>
   </div>
 </div>
 
-<!-- Admin PIN modal -->
-<div class="modal-backdrop" id="modal-admin-pin">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Admin access</h3>
-      <button class="icon-btn" data-close aria-label="Close"><span data-icon="close"></span></button>
-    </div>
-    <p class="muted">Enter the admin PIN to continue. Default is <strong>1234</strong> until changed in Settings.</p>
-    <div class="field mt-4">
-      <input type="password" inputmode="numeric" maxlength="8" class="input pin-input" id="admin-pin" placeholder="••••" autocomplete="off">
-    </div>
-    <div class="modal-actions">
-      <button class="btn" data-close>Cancel</button>
-      <button class="btn primary" id="btn-pin-go">Unlock</button>
-    </div>
-  </div>
-</div>
-
-<script src="js/store.js"></script>
-<script src="js/app.js"></script>
+<script src="config.js"></script>
+<script src="js/ui.js"></script>
 <script>
-(function () {
-  App.renderIcons();
+let role='staff';
 
-  function go(role) {
-    Store.setRole(role);
-    location.href = role === "admin" ? "admin.html" : "staff.html";
-  }
+function setRole(r,btn){
+  role=r;
+  document.querySelectorAll('.role-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+}
+function showSignup(){document.getElementById('loginCard').classList.add('hidden');document.getElementById('signupCard').classList.remove('hidden');}
+function showLogin(){document.getElementById('signupCard').classList.add('hidden');document.getElementById('loginCard').classList.remove('hidden');}
 
-  document.getElementById("btn-staff").addEventListener("click", function () { go("staff"); });
+// Enter key
+document.getElementById('lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
 
-  document.getElementById("btn-admin").addEventListener("click", function () {
-    App.openModal("modal-admin-pin");
-    setTimeout(function () { document.getElementById("admin-pin").focus(); }, 100);
-  });
-
-  function tryPin() {
-    var v = document.getElementById("admin-pin").value;
-    if (v === Store.getSettings().pin) {
-      document.getElementById("admin-pin").value = "";
-      go("admin");
-    } else {
-      App.toast("Wrong PIN", "danger");
+async function doLogin(){
+  const u=document.getElementById('lgUser').value.trim();
+  const p=document.getElementById('lgPass').value;
+  if(!u||!p){msg('lgMsg','Enter username and password','error');return;}
+  const btn=document.getElementById('lgBtn');
+  btn.disabled=true;btn.textContent='Signing in...';
+  try{
+    const data=await rpc(role==='admin'?'login_admin':'login_staff',{p_username:u,p_password:p});
+    if(data.success){
+      msg('lgMsg','Welcome, '+data.full_name,'success');
+      localStorage.setItem(role==='admin'?'magpms_admin':'magpms_staff',JSON.stringify(data));
+      setTimeout(()=>{location.href=role==='admin'?'admin.html':'staff.html';},500);
+    }else{
+      msg('lgMsg',data.message||'Login failed','error');
     }
-  }
-  document.getElementById("btn-pin-go").addEventListener("click", tryPin);
-  document.getElementById("admin-pin").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") tryPin();
-  });
+  }catch(e){msg('lgMsg','Connection error — check internet','error');}
+  finally{btn.disabled=false;btn.textContent='🔐 Sign In';}
+}
 
-  // "Continue as" hint from last used role
-  var last = null;
-  try { last = localStorage.getItem("magpms.lastRole"); } catch (e) {}
-  if (last === "staff" || last === "admin") {
-    var hint = document.getElementById("continue-hint");
-    hint.innerHTML = 'Last time you signed in as <a href="#" id="continue-link"></a>';
-    var link = document.getElementById("continue-link");
-    link.textContent = last === "admin" ? "Admin" : "Staff";
-    link.addEventListener("click", function (e) {
-      e.preventDefault();
-      if (last === "admin") {
-        App.openModal("modal-admin-pin");
-        setTimeout(function () { document.getElementById("admin-pin").focus(); }, 100);
-      } else {
-        go("staff");
-      }
-    });
-  }
-})();
+async function doSignup(){
+  const name=document.getElementById('suName').value.trim();
+  const phone=document.getElementById('suPhone').value.trim();
+  const user=document.getElementById('suUser').value.trim();
+  const pass=document.getElementById('suPass').value;
+  if(!name||!user||pass.length<6){msg('suMsg','Fill all fields (password min 6 chars)','error');return;}
+  const btn=document.getElementById('suBtn');
+  btn.disabled=true;btn.textContent='Creating...';
+  try{
+    const data=await rpc('register_staff',{p_full_name:name,p_username:user,p_password:pass,p_phone:phone});
+    msg('suMsg',data.message||'Done',data.success?'success':'error');
+    if(data.success){document.getElementById('suName').value='';document.getElementById('suUser').value='';document.getElementById('suPass').value='';document.getElementById('suPhone').value='';}
+  }catch(e){msg('suMsg','Connection error — check internet','error');}
+  finally{btn.disabled=false;btn.textContent='✍ Create Staff Account';}
+}
 </script>
 </body>
 </html>
