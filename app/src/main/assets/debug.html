@@ -22,7 +22,24 @@ button{background:#f59e0b;color:#000;border:0;border-radius:10px;padding:12px 18
 <button onclick="run()">▶ Run All Tests</button>
 <div id="out"></div>
 
-<script src="config.js"></script>
+<script>
+// Standalone: Supabase config inlined so this page works wherever it is hosted.
+// (Same publishable values as config.js — falls back to them if config.js is absent.)
+const SUPABASE_URL = "https://vpakcpketkuuwmnmritg.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_dWTbItoNrx0zaAFXlHXzKA_Zp_kk2a9";
+async function rpc(fn, params){
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'apikey':SUPABASE_ANON_KEY,
+      'Authorization':`Bearer ${SUPABASE_ANON_KEY}`
+    },
+    body:JSON.stringify(params||{})
+  });
+  return res.json();
+}
+</script>
 <script>
 const TESTS=[
   ['get_prices',{}],
