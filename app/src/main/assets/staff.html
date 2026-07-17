@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d4ed8">
+<title>MAGPMS — Staff</title>
+<link rel="stylesheet" href="css/theme.css">
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar (desktop) -->
+  <aside class="sidebar">
+    <div class="brand"><span data-icon="compass"></span> MAGPMS</div>
+    <button class="nav-item active" data-nav="map"><span data-icon="map"></span> Map</button>
+    <button class="nav-item" data-nav="markers"><span data-icon="pin"></span> Markers</button>
+    <button class="nav-item" data-nav="settings"><span data-icon="settings"></span> Settings</button>
+    <div class="spacer"></div>
+    <button class="nav-item" id="btn-logout-side"><span data-icon="logout"></span> Switch role</button>
+  </aside>
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <span class="brand-mini"><span data-icon="compass"></span> MAGPMS</span>
+    <div class="topbar-title" id="page-title">Map</div>
+    <span class="role-chip">Staff</span>
+  </header>
+
+  <!-- Main -->
+  <main class="app-main is-map">
+
+    <!-- MAP VIEW -->
+    <section class="view active" data-view="map">
+      <div class="map-wrap">
+        <div id="map"></div>
+        <div class="map-fallback hidden" id="map-fallback">
+          <span data-icon="offline"></span>
+          <h3>Map unavailable</h3>
+          <p class="muted">The map needs an internet connection to load.<br>Your markers are still available in the Markers tab.</p>
+          <button class="btn primary" id="btn-map-retry">Retry</button>
+        </div>
+        <div class="map-fabs">
+          <button class="fab" id="fab-layer" aria-label="Switch layer"><span data-icon="layers"></span></button>
+          <button class="fab" id="fab-fullscreen" aria-label="Fullscreen"><span data-icon="fullscreen"></span></button>
+          <button class="fab primary" id="fab-locate" aria-label="My location"><span data-icon="locate"></span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- MARKERS VIEW -->
+    <section class="view" data-view="markers">
+      <div class="view-pad">
+        <div class="search-row">
+          <input class="input" id="search" type="search" placeholder="Search markers…">
+        </div>
+        <div class="chip-row" id="cat-chips"></div>
+        <div class="list" id="marker-list"></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS VIEW -->
+    <section class="view" data-view="settings">
+      <div class="view-pad">
+        <div class="card">
+          <div class="card-title">Appearance</div>
+          <div class="setting-row">
+            <div class="sr-main"><div class="sr-title">Theme</div><div class="sr-sub">Light, dark or follow system</div></div>
+            <div class="segmented" id="seg-theme">
+              <button data-value="light">Light</button>
+              <button data-value="auto">Auto</button>
+              <button data-value="dark">Dark</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="sr-main"><div class="sr-title">Map layer</div><div class="sr-sub">Default base map</div></div>
+            <div class="segmented" id="seg-layer">
+              <button data-value="street">Street</button>
+              <button data-value="satellite">Satellite</button>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="sr-main"><div class="sr-title">Units</div><div class="sr-sub">Distances on the map</div></div>
+            <div class="segmented" id="seg-units">
+              <button data-value="metric">Metric</button>
+              <button data-value="imperial">Imperial</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Session</div>
+          <button class="btn block" id="btn-logout"><span data-icon="logout"></span> Switch role</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom nav (mobile) -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-nav="map"><span data-icon="map"></span> Map</button>
+    <button class="nav-item" data-nav="markers"><span data-icon="pin"></span> Markers</button>
+    <button class="nav-item" data-nav="settings"><span data-icon="settings"></span> Settings</button>
+  </nav>
+</div>
+
+<!-- Marker detail sheet -->
+<div class="modal-backdrop" id="modal-detail">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="dt-name">Marker</h3>
+      <button class="icon-btn" data-close aria-label="Close"><span data-icon="close"></span></button>
+    </div>
+    <p id="dt-meta" class="muted"></p>
+    <p id="dt-notes" class="mt-2"></p>
+    <div class="modal-actions">
+      <button class="btn primary" id="dt-center"><span data-icon="map"></span> Show on map</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+<script src="js/map.js"></script>
+<script>
+(function () {
+  if (!App.requireRole("staff")) return;
+  App.renderIcons();
+  App.applyTheme();
+
+  var TITLES = { map: "Map", markers: "Markers", settings: "Settings" };
+  document.addEventListener("viewchange", function (e) {
+    document.getElementById("page-title").textContent = TITLES[e.detail.view] || "MAGPMS";
+  });
+
+  var activeCat = null;
+  var detailId = null;
+
+  function openDetail(id) {
+    var m = Store.getMarker(id);
+    if (!m) return;
+    detailId = id;
+    var cat = Store.getCategory(m.category);
+    document.getElementById("dt-name").textContent = m.name;
+    document.getElementById("dt-meta").innerHTML =
+      '<span style="color:' + cat.color + '">&#9679;</span> ' + App.escapeHtml(cat.name) +
+      " · " + App.fmtCoord(m.lat) + ", " + App.fmtCoord(m.lng);
+    document.getElementById("dt-notes").textContent = m.notes || "";
+    App.openModal("modal-detail");
+  }
+
+  document.getElementById("dt-center").addEventListener("click", function () {
+    var m = Store.getMarker(detailId);
+    App.closeModal("modal-detail");
+    if (!m) return;
+    App.switchView("map");
+    if (!MagMap.focus(m.lat, m.lng)) App.toast("Map is offline", "danger");
+  });
+
+  function renderChips() {
+    var host = document.getElementById("cat-chips");
+    var cats = Store.getCategories();
+    var html = '<button class="chip' + (activeCat === null ? " active" : "") + '" data-cat="">All</button>';
+    cats.forEach(function (c) {
+      html += '<button class="chip' + (activeCat === c.id ? " active" : "") + '" data-cat="' + c.id + '">' +
+        '<span class="dot" style="background:' + c.color + '"></span>' + App.escapeHtml(c.name) + "</button>";
+    });
+    host.innerHTML = html;
+    host.querySelectorAll(".chip").forEach(function (ch) {
+      ch.addEventListener("click", function () {
+        activeCat = ch.getAttribute("data-cat") || null;
+        renderChips();
+        renderList();
+      });
+    });
+  }
+
+  function renderList() {
+    var q = document.getElementById("search").value.trim().toLowerCase();
+    var host = document.getElementById("marker-list");
+    var items = Store.getMarkers().filter(function (m) {
+      if (activeCat && m.category !== activeCat) return false;
+      if (q && m.name.toLowerCase().indexOf(q) < 0 && (m.notes || "").toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    if (!items.length) {
+      host.innerHTML = '<div class="empty">' + App.icon("pin") + "<p>No markers found</p></div>";
+      return;
+    }
+    host.innerHTML = items.map(function (m) {
+      var cat = Store.getCategory(m.category);
+      return '<div class="list-item" data-id="' + m.id + '">' +
+        '<span class="cat-dot" style="background:' + cat.color + '"></span>' +
+        '<span class="li-main"><span class="li-title">' + App.escapeHtml(m.name) + "</span><br>" +
+        '<span class="li-sub">' + App.escapeHtml(cat.name) + " · " + App.fmtCoord(m.lat) + ", " + App.fmtCoord(m.lng) + "</span></span>" +
+        "</div>";
+    }).join("");
+    host.querySelectorAll(".list-item").forEach(function (el) {
+      el.addEventListener("click", function () { openDetail(el.getAttribute("data-id")); });
+    });
+  }
+
+  document.getElementById("search").addEventListener("input", renderList);
+  document.getElementById("btn-logout-side").addEventListener("click", function () {
+    Store.clearRole();
+    location.href = "index.html";
+  });
+
+  App.initSettingsPanel();
+  renderChips();
+  renderList();
+  MagMap.init({ onMarkerClick: openDetail });
+})();
+</script>
+</body>
+</html>
