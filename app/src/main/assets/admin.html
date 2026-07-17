@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#0e1520"/>
+<title>MAGPMS — Admin Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/theme.css"/>
+</head>
+<body>
+<div id="loading">Loading...</div>
+<div id="app" style="display:none">
+
+<header>
+  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+  <div class="brand">⛽ MAGPMS<small id="whoami"></small></div>
+  <div class="h-actions">
+    <button class="theme-btn" id="themeBtn" aria-label="Switch theme">🌙</button>
+    <button class="btn btn-out" onclick="logout()">Log Out</button>
+  </div>
+</header>
+
+<div id="menuOverlay" onclick="toggleMenu()"></div>
+<nav id="sideMenu">
+  <div class="menu-head">
+    <div class="menu-logo">⛽</div>
+    <div><div class="menu-title">MAGPMS</div>
+    <div class="menu-sub">Fuel Station Cloud</div></div>
+  </div>
+  <div class="mi active" data-s="dashboard" onclick="go('dashboard',this)"><span class="ic">📊</span> Dashboard</div>
+  <div class="mi" data-s="prices" onclick="go('prices',this)"><span class="ic">💲</span> Fuel Prices</div>
+  <div class="mi" data-s="staff" onclick="go('staff',this)"><span class="ic">👥</span> User Accounts</div>
+  <div class="mi" data-s="tanks" onclick="go('tanks',this)"><span class="ic">🛢</span> Tanks &amp; Delivery</div>
+  <div class="mi" data-s="credit" onclick="go('credit',this)"><span class="ic">🧾</span> Credit Customers</div>
+  <div class="mi" data-s="sales" onclick="go('sales',this)"><span class="ic">💰</span> Sales</div>
+  <div class="mi" data-s="expenses" onclick="go('expenses',this)"><span class="ic">💸</span> Expenses</div>
+  <div class="mi" data-s="reports" onclick="go('reports',this)"><span class="ic">📈</span> Staff Report</div>
+  <div class="mi" data-s="shifts" onclick="go('shifts',this)"><span class="ic">🕒</span> Shifts &amp; Attendance</div>
+</nav>
+
+<div class="wrap">
+
+<!-- ================= DASHBOARD ================= -->
+<div class="section show" id="sec-dashboard">
+  <h1 class="display">Dashboard</h1>
+  <div class="sub">Live station overview</div>
+
+  <div class="clock"><div class="d" id="clockDate">—</div><div class="t" id="clockTime">—</div></div>
+
+  <div class="stats">
+    <div class="scard"><div class="em">💰</div><div class="lbl">Total Sales</div>
+      <div class="val v-gold" id="dTotalSales">0</div><div class="unit">ETB</div></div>
+    <div class="scard"><div class="em">🛢</div><div class="lbl">Fuel Stock<span class="badge-low hidden" id="dStockBadge">LOW</span></div>
+      <div class="val v-blue" id="dFuelStock">0</div><div class="unit">Liters</div></div>
+    <div class="scard"><div class="em">💳</div><div class="lbl">Credit Balance</div>
+      <div class="val v-purple" id="dCredit">0</div><div class="unit">ETB</div></div>
+    <div class="scard hl"><div class="em">👷</div><div class="lbl">Employees</div>
+      <div class="val v-green" id="dOnDuty">0</div><div class="unit">On Duty Now</div></div>
+  </div>
+
+  <div class="refresh-line"><span id="updStamp">—</span><button onclick="refreshAll()">↻ Refresh now</button></div>
+
+  <div class="card">
+    <h2>Recent Transactions</h2>
+    <div id="recentTx"><div class="empty">Loading...</div></div>
+  </div>
+</div>
+
+<!-- ================= PRICES ================= -->
+<div class="section" id="sec-prices">
+  <h1 class="display">Prices</h1><div class="sub">Fuel price management (ETB / liter)</div>
+  <div class="card">
+    <div class="grid2">
+      <div class="field"><label>Diesel</label><input type="number" id="prDiesel" step="0.01" min="0" inputmode="decimal"/></div>
+      <div class="field"><label>Petrol</label><input type="number" id="prPetrol" step="0.01" min="0" inputmode="decimal"/></div>
+    </div>
+    <button class="btn btn-gold" id="priceBtn" onclick="savePrices()">💾 Update Prices</button>
+    <div class="msg" id="priceMsg"></div>
+  </div>
+</div>
+
+<!-- ================= STAFF ================= -->
+<div class="section" id="sec-staff">
+  <h1 class="display">Accounts</h1><div class="sub">Staff approval &amp; roles</div>
+  <div class="card">
+    <div class="card-tools">
+      <input type="search" id="staffSearch" placeholder="🔍 Search name or username…" oninput="renderStaff()"/>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="setFilter('pending',this)">Pending</button>
+      <button class="tab" onclick="setFilter('approved',this)">Approved</button>
+      <button class="tab" onclick="setFilter('rejected',this)">Rejected</button>
+      <button class="tab" onclick="setFilter('all',this)">All</button>
+    </div>
+    <div id="staffList" class="empty">Loading...</div>
+  </div>
+</div>
+
+<!-- ================= TANKS ================= -->
+<div class="section" id="sec-tanks">
+  <h1 class="display">Tanks</h1><div class="sub">Levels &amp; fuel deliveries</div>
+  <div class="card">
+    <div id="tankList" class="empty">Loading...</div>
+    <div class="divider"></div>
+    <div class="grid2">
+      <div class="field"><label>Tank</label><select id="dvTank"></select></div>
+      <div class="field"><label>Liters Delivered</label><input type="number" id="dvLiters" min="0" step="1" inputmode="numeric"/></div>
+    </div>
+    <button class="btn btn-gold" id="dvBtn" onclick="recordDelivery()">🚚 Record Delivery</button>
+    <div class="msg" id="dvMsg"></div>
+  </div>
+</div>
+
+<!-- ================= CREDIT ================= -->
+<div class="section" id="sec-credit">
+  <h1 class="display">Credit</h1><div class="sub">Credit customers &amp; payments</div>
+  <div class="card">
+    <div class="grid2">
+      <div class="field"><label>Name</label><input type="text" id="ccName"/></div>
+      <div class="field"><label>Phone</label><input type="text" id="ccPhone" placeholder="09xxxxxxxx"/></div>
+      <div class="field"><label>Plate No</label><input type="text" id="ccPlate"/></div>
+      <div class="field"><label>Credit Limit (0 = unlimited)</label><input type="number" id="ccLimit" min="0" step="1" value="0"/></div>
+    </div>
+    <button class="btn btn-gold" id="ccBtn" onclick="addCustomer()">➕ Add Customer</button>
+    <div class="msg" id="ccMsg"></div>
+    <div class="divider"></div>
+    <div id="custList" class="empty">Loading...</div>
+  </div>
+</div>
+
+<!-- ================= SALES ================= -->
+<div class="section" id="sec-sales">
+  <h1 class="display">Sales</h1><div class="sub">All transactions (latest 100)</div>
+  <div class="card">
+    <div class="card-tools">
+      <input type="search" id="saleSearch" placeholder="🔍 Search staff / fuel…" oninput="renderSales()"/>
+    </div>
+    <div class="tabs" id="payTabs">
+      <button class="tab active" data-pay="all" onclick="setPayFilter('all',this)">All</button>
+      <button class="tab" data-pay="cash" onclick="setPayFilter('cash',this)">Cash</button>
+      <button class="tab" data-pay="telebirr" onclick="setPayFilter('telebirr',this)">Telebirr</button>
+      <button class="tab" data-pay="cbe" onclick="setPayFilter('cbe',this)">CBE</button>
+      <button class="tab" data-pay="credit" onclick="setPayFilter('credit',this)">Credit</button>
+    </div>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Time</th><th>Staff</th><th>Fuel</th><th>Liters</th><th>ETB</th><th>Pay</th></tr></thead>
+      <tbody id="salesBody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= EXPENSES ================= -->
+<div class="section" id="sec-expenses">
+  <h1 class="display">Expenses</h1><div class="sub">Operating costs</div>
+  <div class="card">
+    <div class="grid2">
+      <div class="field"><label>Category</label>
+        <select id="exCat"><option>salary</option><option>electricity</option><option>maintenance</option><option>transport</option><option>other</option></select></div>
+      <div class="field"><label>Amount (ETB)</label><input type="number" id="exAmt" min="0" step="0.01" inputmode="decimal"/></div>
+    </div>
+    <div class="field"><label>Description</label><input type="text" id="exDesc"/></div>
+    <button class="btn btn-gold" id="exBtn" onclick="addExpense()">➕ Record Expense</button>
+    <div class="msg" id="exMsg"></div>
+    <div class="divider"></div>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>ETB</th></tr></thead>
+      <tbody id="exBody"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= REPORTS ================= -->
+<div class="section" id="sec-reports">
+  <h1 class="display">Reports</h1><div class="sub">Performance &amp; profit</div>
+  <div class="card" id="printArea">
+    <h2 style="display:flex;justify-content:space-between;align-items:center">📊 Daily Report (7 days)
+      <button class="btn btn-blue no-print" onclick="window.print()">🖨 Print</button></h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Day</th><th>Sales</th><th>Liters</th><th>Revenue</th><th>Expenses</th><th>Net ETB</th></tr></thead>
+      <tbody id="reportBody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+    <div class="divider"></div>
+    <h2>⛽ Fuel Totals (7 days)</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Fuel</th><th>Sales</th><th>Liters</th><th>Revenue ETB</th></tr></thead>
+      <tbody id="fuelRepBody"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+    <div class="divider"></div>
+    <h2>🏆 Staff Performance (7 days)</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Staff</th><th>Diesel L</th><th>Diesel ETB</th><th>Petrol L</th><th>Petrol ETB</th><th>Total L</th><th>Total ETB</th></tr></thead>
+      <tbody id="staffRepBody"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SHIFTS ================= -->
+<div class="section" id="sec-shifts">
+  <h1 class="display">Shifts</h1><div class="sub">Shifts, meters &amp; attendance</div>
+  <div class="card">
+    <h2>🕒 Shifts</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Staff</th><th>Opened</th><th>Open M</th><th>Close M</th><th>Liters</th><th>Status</th></tr></thead>
+      <tbody id="shiftBody"><tr><td colspan="6" class="empty">No shifts yet</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>⛽ Nozzle Readings</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Staff</th><th>Nozzle</th><th>Fuel</th><th>Open</th><th>Close</th><th>Liters</th></tr></thead>
+      <tbody id="nrBody"><tr><td colspan="6" class="empty">No readings yet</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>🕐 Attendance Log</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Staff</th><th>Check In</th><th>Check Out</th><th>Hours</th></tr></thead>
+      <tbody id="attBody"><tr><td colspan="4" class="empty">No attendance yet</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- Bottom quick-nav (mobile) -->
+<nav class="bottom-nav">
+  <button class="bn-item active" data-s="dashboard" onclick="go('dashboard',this)"><span class="ic">📊</span>Home</button>
+  <button class="bn-item" data-s="prices" onclick="go('prices',this)"><span class="ic">💲</span>Prices</button>
+  <button class="bn-item" data-s="sales" onclick="go('sales',this)"><span class="ic">💰</span>Sales</button>
+  <button class="bn-item" data-s="reports" onclick="go('reports',this)"><span class="ic">📈</span>Reports</button>
+  <button class="bn-item" onclick="toggleMenu()"><span class="ic">☰</span>More</button>
+</nav>
+
+</div>
+
+<script src="config.js"></script>
+<script src="js/ui.js"></script>
+<script>
+let session=null, allStaff=[], allSales=[], filter='pending', payFilter='all';
+
+function logout(){localStorage.removeItem('magpms_admin');location.href='index.html';}
+
+/* DASHBOARD */
+async function loadDashboard(){
+  try{
+    const [sales,tanks,custs,att]=await Promise.all([
+      rpc('list_sales',{p_staff_id:null,p_limit:100}),
+      rpc('list_tanks',{}),
+      rpc('list_credit_customers',{}),
+      rpc('admin_list_attendance',{p_limit:100})
+    ]);
+    if(Array.isArray(sales)){
+      const live=sales.filter(s=>!s.voided);
+      const rev=live.reduce((a,s)=>a+Number(s.total_etb||0),0);
+      document.getElementById('dTotalSales').textContent=rev.toLocaleString(undefined,{maximumFractionDigits:0});
+      const tx=document.getElementById('recentTx');
+      const recent=live.slice(0,8);
+      tx.innerHTML=recent.length?recent.map(s=>{
+        const t=new Date(s.created_at).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+        return `<div class="tx"><div class="l"><h4>${s.fuel_type} · ${s.liters} L</h4>
+          <p>${esc(s.staff_name)} · ${t} · ${esc(s.payment_method)}</p></div>
+          <div class="amt">+${Number(s.total_etb).toFixed(0)} ETB</div></div>`;
+      }).join(''):'<div class="empty">No transactions yet</div>';
+    }
+    if(Array.isArray(tanks)){
+      const stock=tanks.reduce((a,t)=>a+Number(t.current_liters||0),0);
+      document.getElementById('dFuelStock').textContent=stock.toLocaleString(undefined,{maximumFractionDigits:0});
+      document.getElementById('dStockBadge').classList.toggle('hidden',UI.lowTankCount(tanks)===0);
+    }
+    if(Array.isArray(custs)){
+      const cb=custs.reduce((a,c)=>a+Number(c.balance||0),0);
+      document.getElementById('dCredit').textContent=cb.toLocaleString(undefined,{maximumFractionDigits:0});
+    }
+    if(Array.isArray(att)){
+      const on=att.filter(a=>!a.check_out).length;
+      document.getElementById('dOnDuty').textContent=on;
+    }
+    UI.stampUpdated('updStamp');
+  }catch(e){}
+}
+
+/* PRICES */
+async function loadPrices(){
+  try{const r=await rpc('get_prices',{});
+    if(Array.isArray(r))r.forEach(p=>{
+      if(p.fuel_type==='Diesel')document.getElementById('prDiesel').value=p.price_per_liter;
+      if(p.fuel_type==='Petrol')document.getElementById('prPetrol').value=p.price_per_liter;});
+  }catch(e){}
+}
+async function savePrices(){
+  const d=parseFloat(document.getElementById('prDiesel').value);
+  const p=parseFloat(document.getElementById('prPetrol').value);
+  if(!d||!p||d<=0||p<=0){msg('priceMsg','Enter valid prices','error');return;}
+  const btn=document.getElementById('priceBtn');btn.disabled=true;
+  try{
+    const r1=await rpc('admin_set_price',{p_admin_id:session.id,p_fuel_type:'Diesel',p_price:d});
+    const r2=await rpc('admin_set_price',{p_admin_id:session.id,p_fuel_type:'Petrol',p_price:p});
+    const ok=r1.success&&r2.success;
+    msg('priceMsg',ok?'Prices updated':'Error updating',ok?'success':'error');
+    if(ok)UI.toast('Prices updated ✔','ok');
+  }catch(e){msg('priceMsg','Connection error','error');}
+  finally{btn.disabled=false;}
+}
+
+/* STAFF */
+function setFilter(f,btn){filter=f;document.querySelectorAll('#sec-staff .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderStaff();}
+function renderStaff(){
+  const list=document.getElementById('staffList');
+  const q=(document.getElementById('staffSearch').value||'').trim().toLowerCase();
+  let rows=filter==='all'?allStaff:allStaff.filter(s=>s.status===filter);
+  if(q)rows=rows.filter(s=>(s.full_name||'').toLowerCase().includes(q)||(s.username||'').toLowerCase().includes(q));
+  if(rows.length===0){list.className='empty';list.textContent='No staff in this category';return;}
+  list.className='';
+  list.innerHTML=rows.map(s=>`
+    <div class="row"><div class="info">
+      <h3>${esc(s.full_name)}</h3>
+      <p>@${esc(s.username)}${s.phone?' · '+esc(s.phone):''} · ${esc(s.role)}</p>
+      <span class="tag ${s.status}">${s.status}</span></div>
+    <div style="display:grid;gap:6px;justify-items:end">
+      <div>
+      ${s.status!=='approved'?`<button class="btn btn-ok" onclick="setStatus('${s.id}','approved')">Approve</button> `:''}
+      ${s.status!=='rejected'?`<button class="btn btn-no" onclick="setStatus('${s.id}','rejected')">Reject</button>`:''}
+      </div>
+      <select style="width:auto;padding:5px 9px;font-size:12px" onchange="setRole('${s.id}',this.value)">
+        <option value="operator" ${s.role==='operator'?'selected':''}>operator</option>
+        <option value="accountant" ${s.role==='accountant'?'selected':''}>accountant</option>
+        <option value="manager" ${s.role==='manager'?'selected':''}>manager</option>
+      </select>
+    </div></div>`).join('');
+}
+async function setStatus(id,status){
+  const r=await rpc('admin_set_staff_status',{p_staff_id:id,p_admin_id:session.id,p_status:status});
+  if(r.success){UI.toast('Staff '+status,status==='approved'?'ok':undefined);loadStaff();}
+  else UI.toast(r.message||'Failed','err');
+}
+async function setRole(staffId,role){
+  const r=await rpc('admin_set_staff_role',{p_admin_id:session.id,p_staff_id:staffId,p_role:role});
+  if(!r.success)UI.toast(r.message||'Failed','err');else UI.toast('Role updated','ok');
+  loadStaff();
+}
+async function loadStaff(){
+  try{const r=await rpc('admin_list_staff',{p_status:null});allStaff=Array.isArray(r)?r:[];renderStaff();}catch(e){}
+}
+
+/* TANKS */
+async function loadTanks(){
+  try{
+    const tanks=await rpc('list_tanks',{});
+    if(!Array.isArray(tanks))return;
+    const el=document.getElementById('tankList');el.className='';
+    el.innerHTML=tanks.map(t=>UI.tankRow(t)).join('');
+    document.getElementById('dvTank').innerHTML=tanks.map(t=>
+      `<option value="${t.id}">${t.tank_name} (${t.fuel_type})</option>`).join('');
+  }catch(e){}
+}
+async function recordDelivery(){
+  const tank=parseInt(document.getElementById('dvTank').value);
+  const liters=parseFloat(document.getElementById('dvLiters').value);
+  if(!tank||!liters||liters<=0){msg('dvMsg','Select tank and enter liters','error');return;}
+  const btn=document.getElementById('dvBtn');btn.disabled=true;
+  try{
+    const r=await rpc('admin_record_delivery',{p_admin_id:session.id,p_tank_id:tank,p_liters:liters});
+    msg('dvMsg',r.message,r.success?'success':'error');
+    if(r.success){UI.toast('Delivery recorded ✔','ok');document.getElementById('dvLiters').value='';loadTanks();loadDashboard();}
+  }catch(e){msg('dvMsg','Connection error','error');}
+  finally{btn.disabled=false;}
+}
+
+/* CREDIT */
+async function addCustomer(){
+  const name=document.getElementById('ccName').value.trim();
+  const phone=document.getElementById('ccPhone').value.trim();
+  const plate=document.getElementById('ccPlate').value.trim();
+  const lim=parseFloat(document.getElementById('ccLimit').value)||0;
+  if(!name){msg('ccMsg','Enter customer name','error');return;}
+  const btn=document.getElementById('ccBtn');btn.disabled=true;
+  try{
+    const r=await rpc('admin_add_credit_customer',{p_admin_id:session.id,p_name:name,p_phone:phone,p_plate:plate,p_limit:lim});
+    msg('ccMsg',r.message,r.success?'success':'error');
+    if(r.success){['ccName','ccPhone','ccPlate'].forEach(i=>document.getElementById(i).value='');document.getElementById('ccLimit').value='0';loadCustomers();loadDashboard();}
+  }catch(e){msg('ccMsg','Connection error','error');}
+  finally{btn.disabled=false;}
+}
+async function payCredit(id,name){
+  const amt=await UI.promptNumber('Credit Payment','Record a payment from '+name+'.','Payment amount (ETB)');
+  if(!amt||amt<=0)return;
+  const r=await rpc('admin_credit_payment',{p_admin_id:session.id,p_customer_id:id,p_amount:amt});
+  UI.toast(r.message||'Done',r.success?'ok':'err');
+  if(r.success){loadCustomers();loadDashboard();}
+}
+async function loadCustomers(){
+  try{
+    const r=await rpc('list_credit_customers',{});
+    const el=document.getElementById('custList');
+    if(!Array.isArray(r)||r.length===0){el.className='empty';el.textContent='No credit customers yet';return;}
+    el.className='';
+    el.innerHTML=r.map(c=>`
+      <div class="row"><div class="info">
+        <h3>${esc(c.name)}</h3>
+        <p>${c.plate_no?esc(c.plate_no)+' · ':''}${c.phone?esc(c.phone)+' · ':''}limit ${Number(c.credit_limit)>0?Number(c.credit_limit).toLocaleString():'∞'} ETB</p>
+        <span class="tag ${Number(c.balance)>0?'pending':'approved'}">owes ${Number(c.balance).toFixed(2)} ETB</span></div>
+      <div>${Number(c.balance)>0?`<button class="btn btn-blue" onclick="payCredit('${c.id}','${esc(c.name)}')">💵 Payment</button>`:''}</div>
+      </div>`).join('');
+  }catch(e){}
+}
+
+/* SALES */
+function setPayFilter(p,btn){payFilter=p;document.querySelectorAll('#payTabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderSales();}
+function renderSales(){
+  const tb=document.getElementById('salesBody');
+  const q=(document.getElementById('saleSearch').value||'').trim().toLowerCase();
+  let rows=allSales;
+  if(payFilter!=='all')rows=rows.filter(s=>(s.payment_method||'').toLowerCase()===payFilter);
+  if(q)rows=rows.filter(s=>(s.staff_name||'').toLowerCase().includes(q)||(s.fuel_type||'').toLowerCase().includes(q));
+  if(rows.length===0){tb.innerHTML='<tr><td colspan="6" class="empty">No matching sales</td></tr>';return;}
+  tb.innerHTML=rows.map(s=>{
+    const t=new Date(s.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const style=s.voided?' style="opacity:.4;text-decoration:line-through"':'';
+    const act=s.voided?'<span class="tag rejected">void</span>':`<button class="btn btn-no" style="padding:4px 9px;font-size:11px" onclick="voidSale('${s.id}')">Void</button>`;
+    return `<tr${style}><td class="mono">${t}</td><td>${esc(s.staff_name)}</td><td>${s.fuel_type}</td>
+      <td class="mono">${s.liters}</td><td class="mono">${Number(s.total_etb).toFixed(2)}</td><td>${esc(s.payment_method)} ${act}</td></tr>`;
+  }).join('');
+}
+async function loadSales(){
+  try{
+    const sales=await rpc('list_sales',{p_staff_id:null,p_limit:100});
+    allSales=Array.isArray(sales)?sales:[];
+    renderSales();
+  }catch(e){}
+}
+async function voidSale(id){
+  const ok=await UI.confirmDlg('Void Sale','Void this sale? Tank stock and credit balance will be reversed.','Void Sale');
+  if(!ok)return;
+  const r=await rpc('admin_void_sale',{p_admin_id:session.id,p_sale_id:id});
+  UI.toast(r.message||'Done',r.success?'ok':'err');
+  if(r.success){loadSales();loadTanks();loadCustomers();loadReports();loadDashboard();}
+}
+
+/* EXPENSES */
+async function addExpense(){
+  const cat=document.getElementById('exCat').value;
+  const amt=parseFloat(document.getElementById('exAmt').value);
+  const desc=document.getElementById('exDesc').value.trim();
+  if(!amt||amt<=0){msg('exMsg','Enter valid amount','error');return;}
+  const btn=document.getElementById('exBtn');btn.disabled=true;
+  try{
+    const r=await rpc('admin_add_expense',{p_admin_id:session.id,p_category:cat,p_description:desc,p_amount:amt});
+    msg('exMsg',r.message,r.success?'success':'error');
+    if(r.success){UI.toast('Expense recorded ✔','ok');document.getElementById('exAmt').value='';document.getElementById('exDesc').value='';loadExpenses();loadReports();}
+  }catch(e){msg('exMsg','Connection error','error');}
+  finally{btn.disabled=false;}
+}
+async function loadExpenses(){
+  try{
+    const r=await rpc('list_expenses',{p_limit:50});
+    const tb=document.getElementById('exBody');
+    if(!Array.isArray(r)||r.length===0){tb.innerHTML='<tr><td colspan="4" class="empty">No expenses yet</td></tr>';return;}
+    tb.innerHTML=r.map(e=>{
+      const t=new Date(e.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit'});
+      return `<tr><td class="mono">${t}</td><td>${esc(e.category)}</td><td>${esc(e.description||'')}</td><td class="mono">${Number(e.amount_etb).toFixed(2)}</td></tr>`;
+    }).join('');
+  }catch(e){}
+}
+
+/* REPORTS */
+async function loadReports(){
+  try{
+    const days=await rpc('daily_report',{p_days:7});
+    const tb=document.getElementById('reportBody');
+    if(Array.isArray(days)&&days.length){
+      tb.innerHTML=days.map(d=>{
+        const dt=new Date(d.day).toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'2-digit'});
+        const net=Number(d.net_etb);
+        return `<tr><td>${dt}</td><td class="mono">${d.sales_count}</td><td class="mono">${Number(d.liters).toFixed(1)}</td>
+          <td class="mono">${Number(d.revenue_etb).toFixed(2)}</td><td class="mono">${Number(d.expenses_etb).toFixed(2)}</td>
+          <td class="mono" style="color:${net>=0?'var(--success)':'var(--danger)'}">${net.toFixed(2)}</td></tr>`;
+      }).join('');
+    }else{tb.innerHTML='<tr><td colspan="6" class="empty">No data</td></tr>';}
+    /* fuel totals */
+    const fuel=await rpc('fuel_report',{p_days:7});
+    const fb=document.getElementById('fuelRepBody');
+    if(Array.isArray(fuel)&&fuel.length){
+      const fl=fuel.reduce((a,f)=>a+Number(f.liters),0);
+      const fr=fuel.reduce((a,f)=>a+Number(f.revenue_etb),0);
+      const fc=fuel.reduce((a,f)=>a+Number(f.sales_count),0);
+      fb.innerHTML=fuel.map(f=>`<tr><td>${f.fuel_type}</td><td class="mono">${f.sales_count}</td>
+        <td class="mono">${Number(f.liters).toFixed(1)}</td><td class="mono">${Number(f.revenue_etb).toFixed(2)}</td></tr>`).join('')
+        +`<tr style="font-weight:700;color:var(--accent)"><td>TOTAL</td><td class="mono">${fc}</td>
+        <td class="mono">${fl.toFixed(1)}</td><td class="mono">${fr.toFixed(2)}</td></tr>`;
+    }else{fb.innerHTML='<tr><td colspan="4" class="empty">No data</td></tr>';}
+
+    /* staff with fuel breakdown */
+    const staff=await rpc('staff_report_v2',{p_days:7});
+    const sb=document.getElementById('staffRepBody');
+    if(Array.isArray(staff)&&staff.length){
+      const T={dl:0,de:0,pl:0,pe:0,tl:0,te:0};
+      sb.innerHTML=staff.map(s=>{
+        T.dl+=Number(s.diesel_liters);T.de+=Number(s.diesel_etb);
+        T.pl+=Number(s.petrol_liters);T.pe+=Number(s.petrol_etb);
+        T.tl+=Number(s.total_liters);T.te+=Number(s.total_etb);
+        return `<tr><td>${esc(s.staff_name)}</td>
+        <td class="mono">${Number(s.diesel_liters).toFixed(1)}</td><td class="mono">${Number(s.diesel_etb).toFixed(0)}</td>
+        <td class="mono">${Number(s.petrol_liters).toFixed(1)}</td><td class="mono">${Number(s.petrol_etb).toFixed(0)}</td>
+        <td class="mono">${Number(s.total_liters).toFixed(1)}</td><td class="mono">${Number(s.total_etb).toFixed(2)}</td></tr>`;
+      }).join('')
+      +`<tr style="font-weight:700;color:var(--accent)"><td>TOTAL</td>
+        <td class="mono">${T.dl.toFixed(1)}</td><td class="mono">${T.de.toFixed(0)}</td>
+        <td class="mono">${T.pl.toFixed(1)}</td><td class="mono">${T.pe.toFixed(0)}</td>
+        <td class="mono">${T.tl.toFixed(1)}</td><td class="mono">${T.te.toFixed(2)}</td></tr>`;
+    }else{sb.innerHTML='<tr><td colspan="7" class="empty">No data</td></tr>';}
+  }catch(e){}
+}
+
+/* SHIFTS + READINGS + ATTENDANCE */
+async function loadShifts(){
+  try{
+    const r=await rpc('admin_list_shifts',{p_limit:50});
+    const tb=document.getElementById('shiftBody');
+    if(!Array.isArray(r)||r.length===0){tb.innerHTML='<tr><td colspan="6" class="empty">No shifts yet</td></tr>';return;}
+    tb.innerHTML=r.map(sh=>{
+      const opened=new Date(sh.opened_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const liters=(sh.closing_meter!=null&&sh.opening_meter!=null)?(sh.closing_meter-sh.opening_meter).toFixed(1):'—';
+      return `<tr><td>${esc(sh.staff_name)}</td><td class="mono">${opened}</td>
+        <td class="mono">${sh.opening_meter??'—'}</td><td class="mono">${sh.closing_meter??'—'}</td>
+        <td class="mono">${liters}</td><td><span class="tag ${sh.status}">${sh.status}</span></td></tr>`;
+    }).join('');
+  }catch(e){}
+}
+async function loadReadings(){
+  try{
+    const r=await rpc('admin_list_readings',{p_limit:100});
+    const tb=document.getElementById('nrBody');
+    if(!Array.isArray(r)||r.length===0){tb.innerHTML='<tr><td colspan="6" class="empty">No readings yet</td></tr>';return;}
+    tb.innerHTML=r.map(x=>`<tr><td>${esc(x.staff_name)}</td><td>${x.nozzle_name}</td><td>${x.fuel_type}</td>
+      <td class="mono">${x.opening}</td><td class="mono">${x.closing??'—'}</td>
+      <td class="mono">${x.liters!=null?Number(x.liters).toFixed(1):'—'}</td></tr>`).join('');
+  }catch(e){}
+}
+async function loadAttendance(){
+  try{
+    const r=await rpc('admin_list_attendance',{p_limit:100});
+    const tb=document.getElementById('attBody');
+    if(!Array.isArray(r)||r.length===0){tb.innerHTML='<tr><td colspan="4" class="empty">No attendance yet</td></tr>';return;}
+    tb.innerHTML=r.map(a=>{
+      const ci=new Date(a.check_in);
+      const co=a.check_out?new Date(a.check_out):null;
+      const hrs=co?((co-ci)/3600000).toFixed(1)+' h':'<span class="tag open">on duty</span>';
+      const f=d=>d.toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      return `<tr><td>${esc(a.staff_name)}</td><td class="mono">${f(ci)}</td>
+        <td class="mono">${co?f(co):'—'}</td><td class="mono">${hrs}</td></tr>`;
+    }).join('');
+  }catch(e){}
+}
+
+function refreshAll(){
+  loadDashboard();loadTanks();loadSales();loadCustomers();
+}
+
+(function init(){
+  session=JSON.parse(localStorage.getItem('magpms_admin')||'null');
+  if(!session||!session.success){location.href='index.html';return;}
+  document.getElementById('whoami').textContent=session.full_name;
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+  loadDashboard();loadPrices();loadStaff();loadTanks();loadCustomers();
+  loadSales();loadExpenses();loadReports();loadShifts();loadReadings();loadAttendance();
+  setInterval(loadDashboard,60000);
+})();
+</script>
+</body>
+</html>

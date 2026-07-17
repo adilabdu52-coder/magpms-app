@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#0e1520"/>
+<title>MAGPMS — Staff</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/theme.css"/>
+</head>
+<body>
+<div id="loading">Loading...</div>
+<div id="app" style="display:none">
+
+<header>
+  <button class="menu-btn" onclick="toggleMenu()">☰</button>
+  <div class="brand">⛽ MAGPMS<small id="whoami"></small></div>
+  <div class="h-actions">
+    <button class="theme-btn" id="themeBtn" aria-label="Switch theme">🌙</button>
+    <button class="btn btn-out" onclick="logout()">Log Out</button>
+  </div>
+</header>
+
+<div id="menuOverlay" onclick="toggleMenu()"></div>
+<nav id="sideMenu">
+  <div class="menu-head">
+    <div class="menu-logo">⛽</div>
+    <div><div class="menu-title">MAGPMS</div>
+    <div class="menu-sub">Fuel Station Cloud</div></div>
+  </div>
+  <div class="mi active" data-s="dashboard" onclick="go('dashboard',this)"><span class="ic">📊</span> Dashboard</div>
+  <div class="mi" data-s="pos" onclick="go('pos',this)"><span class="ic">🧾</span> Sales / POS</div>
+  <div class="mi" data-s="shift" onclick="go('shift',this)"><span class="ic">🕒</span> My Shift &amp; Nozzles</div>
+  <div class="mi" data-s="inventory" onclick="go('inventory',this)"><span class="ic">🛢</span> Fuel Inventory</div>
+  <div class="mi" data-s="attendance" onclick="go('attendance',this)"><span class="ic">🕐</span> Attendance</div>
+</nav>
+
+<div class="wrap">
+
+<!-- ============ DASHBOARD ============ -->
+<div class="section show" id="sec-dashboard">
+  <h1 class="display">Dashboard</h1>
+  <div class="sub">Live station overview</div>
+  <div class="clock"><div class="d" id="clockDate">—</div><div class="t" id="clockTime">—</div></div>
+
+  <div class="notice">👤 <span>Logged in as <b id="noticeName">you</b>. Showing your personal stats. Admin has full view.</span></div>
+
+  <div class="stats">
+    <div class="scard"><div class="em">💰</div><div class="lbl">My Sales (ETB)</div>
+      <div class="val v-gold" id="dMySales">0</div><div class="unit">ETB</div></div>
+    <div class="scard"><div class="em">🛢</div><div class="lbl">Fuel Stock<span class="badge-low hidden" id="dStockBadge">LOW</span></div>
+      <div class="val v-blue" id="dFuelStock">0</div><div class="unit">Liters</div></div>
+    <div class="scard"><div class="em">🧾</div><div class="lbl">My Transactions</div>
+      <div class="val v-purple" id="dMyTx">0</div><div class="unit">Sales</div></div>
+    <div class="scard"><div class="em">⛽</div><div class="lbl">My Liters Sold</div>
+      <div class="val v-green" id="dMyLiters">0</div><div class="unit">Liters</div></div>
+  </div>
+
+  <div class="refresh-line"><span id="updStamp">—</span><button onclick="refreshAll()">↻ Refresh now</button></div>
+
+  <div class="card">
+    <h2>📄 My Recent Sales</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Time</th><th>Fuel</th><th>Liters</th><th>Total ETB</th></tr></thead>
+      <tbody id="salesBody"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============ POS ============ -->
+<div class="section" id="sec-pos">
+  <h1 class="display">Sales</h1><div class="sub">Point of sale</div>
+  <div class="card">
+    <h2>💰 Record Fuel Sale</h2>
+    <div class="price-chips" id="priceChips"></div>
+    <div class="field"><label>Fuel Type</label>
+      <select id="sFuel" onchange="liveTotal()"><option>Diesel</option><option>Petrol</option></select></div>
+
+    <div class="seg">
+      <button id="posModeL" class="active" onclick="setPosMode('liters',this)">By Liters</button>
+      <button id="posModeA" onclick="setPosMode('amount',this)">By Amount (ETB)</button>
+    </div>
+
+    <div id="litersEntry">
+      <div class="qbtns">
+        <button class="qbtn" onclick="qSet(5)">5 L</button>
+        <button class="qbtn" onclick="qSet(10)">10 L</button>
+        <button class="qbtn" onclick="qSet(20)">20 L</button>
+        <button class="qbtn" onclick="qSet(40)">40 L</button>
+      </div>
+      <div class="field"><label>Liters</label><input type="number" id="sLiters" min="0" step="0.01" inputmode="decimal"/></div>
+    </div>
+
+    <div id="amountEntry" class="hidden">
+      <div class="qbtns">
+        <button class="qbtn" onclick="qSet(500)">500 ETB</button>
+        <button class="qbtn" onclick="qSet(1000)">1000 ETB</button>
+        <button class="qbtn" onclick="qSet(2000)">2000 ETB</button>
+        <button class="qbtn" onclick="qSet(5000)">5000 ETB</button>
+      </div>
+      <div class="field"><label>Amount (ETB)</label><input type="number" id="sAmount" min="0" step="0.01" inputmode="decimal"/></div>
+    </div>
+
+    <div class="field"><label>Payment</label>
+      <select id="sPay" onchange="togglePayFields()">
+        <option value="cash">Cash</option><option value="telebirr">Telebirr</option>
+        <option value="cbe">CBE Birr</option><option value="credit">Credit</option>
+      </select></div>
+    <div class="field hidden" id="custField"><label>Credit Customer</label>
+      <select id="sCustomer"></select></div>
+    <div class="total-line" id="liveTotal">Total: 0.00 ETB</div>
+    <button class="btn btn-gold" id="saleBtn" onclick="submitSale()">✔ Record Sale</button>
+    <div class="msg" id="saleMsg"></div>
+  </div>
+</div>
+
+<!-- ============ SHIFT + NOZZLES ============ -->
+<div class="section" id="sec-shift">
+  <h1 class="display">Shift</h1><div class="sub">Shift &amp; nozzle readings</div>
+  <div class="card">
+    <h2>🕒 My Shift</h2>
+    <div id="shiftBanner" class="shift-banner shift-none">Checking shift...</div>
+    <div id="openShiftForm">
+      <div class="field"><label>Opening Meter Reading (L)</label>
+        <input type="number" id="openMeter" min="0" step="0.01" inputmode="decimal"/></div>
+      <button class="btn btn-blue" id="openBtn" onclick="openShift()" style="width:100%;padding:12px;font-size:14px">▶ Open Shift</button>
+    </div>
+    <div id="closeShiftForm" class="hidden">
+      <div class="field"><label>Closing Meter Reading (L)</label>
+        <input type="number" id="closeMeter" min="0" step="0.01" inputmode="decimal"/></div>
+      <button class="btn btn-out" style="width:100%;padding:12px" id="closeBtn" onclick="closeShift()">⏹ Close Shift</button>
+    </div>
+    <div class="msg" id="shiftMsg"></div>
+  </div>
+  <div class="card">
+    <h2>⛽ Nozzle Meter Readings</h2>
+    <div class="field"><label>Nozzle</label><select id="nzSel"></select></div>
+    <div class="field"><label>Meter Reading (L)</label>
+      <input type="number" id="nzVal" min="0" step="0.01" inputmode="decimal"/></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-blue" id="nzOpenBtn" onclick="nozzleOpen()" style="flex:1;padding:11px">▶ Save Opening</button>
+      <button class="btn btn-gold" id="nzCloseBtn" onclick="nozzleClose()" style="flex:1;width:auto;padding:11px">⏹ Save Closing</button>
+    </div>
+    <div class="msg" id="nzMsg"></div>
+    <div class="divider"></div>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Nozzle</th><th>Fuel</th><th>Open</th><th>Close</th><th>Liters</th></tr></thead>
+      <tbody id="nzBody"><tr><td colspan="5" class="empty">No readings this shift</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============ INVENTORY ============ -->
+<div class="section" id="sec-inventory">
+  <h1 class="display">Inventory</h1><div class="sub">Tank levels</div>
+  <div class="card">
+    <h2>🛢 Tank Levels</h2>
+    <div id="tankList" class="empty">Loading tanks...</div>
+  </div>
+</div>
+
+<!-- ============ ATTENDANCE ============ -->
+<div class="section" id="sec-attendance">
+  <h1 class="display">Attendance</h1><div class="sub">Check in / out</div>
+  <div class="card">
+    <div id="attBanner" class="shift-banner shift-none">Checking...</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-blue" id="inBtn" onclick="doCheckIn()" style="flex:1;padding:12px">✅ Check In</button>
+      <button class="btn btn-out" id="outBtn" onclick="doCheckOut()" style="flex:1;padding:12px">🚪 Check Out</button>
+    </div>
+    <div class="msg" id="attMsg"></div>
+  </div>
+</div>
+
+</div>
+
+<!-- Bottom quick-nav (mobile) -->
+<nav class="bottom-nav">
+  <button class="bn-item active" data-s="dashboard" onclick="go('dashboard',this)"><span class="ic">📊</span>Home</button>
+  <button class="bn-item" data-s="pos" onclick="go('pos',this)"><span class="ic">🧾</span>POS</button>
+  <button class="bn-item" data-s="shift" onclick="go('shift',this)"><span class="ic">🕒</span>Shift</button>
+  <button class="bn-item" data-s="inventory" onclick="go('inventory',this)"><span class="ic">🛢</span>Tanks</button>
+  <button class="bn-item" data-s="attendance" onclick="go('attendance',this)"><span class="ic">🕐</span>Time</button>
+</nav>
+
+</div>
+
+<script src="config.js"></script>
+<script src="js/ui.js"></script>
+<script>
+let session=null, prices={}, posMode='liters';
+
+function logout(){localStorage.removeItem('magpms_staff');location.href='index.html';}
+
+/* POS entry mode */
+function setPosMode(m,btn){
+  posMode=m;
+  document.querySelectorAll('.seg button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('litersEntry').classList.toggle('hidden',m!=='liters');
+  document.getElementById('amountEntry').classList.toggle('hidden',m!=='amount');
+  liveTotal();
+}
+function qSet(v){
+  if(posMode==='liters')document.getElementById('sLiters').value=v;
+  else document.getElementById('sAmount').value=v;
+  liveTotal();
+}
+function saleLiters(){
+  const p=prices[document.getElementById('sFuel').value]||0;
+  if(posMode==='amount'){
+    const a=parseFloat(document.getElementById('sAmount').value)||0;
+    return p>0?Math.round((a/p)*100)/100:0;
+  }
+  return parseFloat(document.getElementById('sLiters').value)||0;
+}
+function liveTotal(){
+  const p=prices[document.getElementById('sFuel').value]||0;
+  const l=saleLiters();
+  document.getElementById('liveTotal').textContent=
+    'Total: '+(l*p).toFixed(2)+' ETB · '+l.toFixed(2)+' L @ '+p+'/L';
+}
+document.addEventListener('input',e=>{if(e.target.id==='sLiters'||e.target.id==='sAmount')liveTotal();});
+function togglePayFields(){
+  document.getElementById('custField').classList.toggle('hidden',document.getElementById('sPay').value!=='credit');
+}
+
+async function loadPrices(){
+  try{const r=await rpc('get_prices',{});
+    if(Array.isArray(r)){r.forEach(p=>prices[p.fuel_type]=Number(p.price_per_liter));
+      document.getElementById('priceChips').innerHTML=r.map(p=>
+        `<span class="chip">${p.fuel_type}: ${Number(p.price_per_liter).toFixed(2)} ETB/L</span>`).join('');liveTotal();}
+  }catch(e){}
+}
+async function loadCustomers(){
+  try{const r=await rpc('list_credit_customers',{});
+    const sel=document.getElementById('sCustomer');
+    if(Array.isArray(r)&&r.length){sel.innerHTML=r.map(c=>`<option value="${c.id}">${esc(c.name)}${c.plate_no?' · '+esc(c.plate_no):''} (owes ${Number(c.balance).toFixed(0)} ETB)</option>`).join('');}
+    else{sel.innerHTML='<option value="">No credit customers — ask admin</option>';}
+  }catch(e){}
+}
+async function checkShift(){
+  try{const r=await rpc('my_open_shift',{p_staff_id:session.id});
+    const banner=document.getElementById('shiftBanner');
+    const hasOpen=Array.isArray(r)&&r.length>0;
+    if(hasOpen){const sh=r[0];
+      banner.className='shift-banner shift-open';
+      banner.textContent='✔ Shift OPEN since '+new Date(sh.opened_at).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+' · opening meter '+sh.opening_meter+' L';
+      document.getElementById('openShiftForm').classList.add('hidden');
+      document.getElementById('closeShiftForm').classList.remove('hidden');
+    }else{banner.className='shift-banner shift-none';
+      banner.textContent='⚠ No open shift — open one to record sales';
+      document.getElementById('openShiftForm').classList.remove('hidden');
+      document.getElementById('closeShiftForm').classList.add('hidden');}
+  }catch(e){}
+}
+async function openShift(){
+  const m=parseFloat(document.getElementById('openMeter').value);
+  if(isNaN(m)||m<0){msg('shiftMsg','Enter opening meter reading','error');return;}
+  const btn=document.getElementById('openBtn');btn.disabled=true;
+  try{const r=await rpc('open_shift',{p_staff_id:session.id,p_opening_meter:m});
+    msg('shiftMsg',r.message,r.success?'success':'error');if(r.success)checkShift();
+  }catch(e){msg('shiftMsg','Connection error','error');}finally{btn.disabled=false;}
+}
+async function closeShift(){
+  const m=parseFloat(document.getElementById('closeMeter').value);
+  if(isNaN(m)||m<0){msg('shiftMsg','Enter closing meter reading','error');return;}
+  const btn=document.getElementById('closeBtn');btn.disabled=true;
+  try{const r=await rpc('close_shift',{p_staff_id:session.id,p_closing_meter:m});
+    msg('shiftMsg',r.message,r.success?'success':'error');
+    if(r.success){document.getElementById('closeMeter').value='';checkShift();}
+  }catch(e){msg('shiftMsg','Connection error','error');}finally{btn.disabled=false;}
+}
+async function submitSale(){
+  const fuel=document.getElementById('sFuel').value;
+  const liters=saleLiters();
+  const pay=document.getElementById('sPay').value;
+  const cust=pay==='credit'?document.getElementById('sCustomer').value:null;
+  if(!liters||liters<=0){msg('saleMsg','Enter valid liters or amount','error');return;}
+  if(pay==='credit'&&!cust){msg('saleMsg','Select a credit customer','error');return;}
+  const btn=document.getElementById('saleBtn');btn.disabled=true;btn.textContent='Saving...';
+  try{const r=await rpc('record_sale_v2',{p_staff_id:session.id,p_fuel_type:fuel,p_liters:liters,p_payment:pay,p_credit_customer_id:cust});
+    msg('saleMsg',r.message+(r.total?(' — '+r.total+' ETB'):''),r.success?'success':'error');
+    if(r.success){
+      UI.toast('Sale recorded ✔','ok');
+      document.getElementById('sLiters').value='';document.getElementById('sAmount').value='';
+      liveTotal();loadMyData();loadTanks();if(pay==='credit')loadCustomers();}
+  }catch(e){msg('saleMsg','Connection error','error');}
+  finally{btn.disabled=false;btn.textContent='✔ Record Sale';}
+}
+async function loadTanks(){
+  try{const tanks=await rpc('list_tanks',{});
+    if(!Array.isArray(tanks))return;
+    const stock=tanks.reduce((a,t)=>a+Number(t.current_liters||0),0);
+    document.getElementById('dFuelStock').textContent=stock.toLocaleString(undefined,{maximumFractionDigits:0});
+    document.getElementById('dStockBadge').classList.toggle('hidden',UI.lowTankCount(tanks)===0);
+    const el=document.getElementById('tankList');el.className='';
+    el.innerHTML=tanks.map(t=>UI.tankRow(t)).join('');
+  }catch(e){}
+}
+async function loadMyData(){
+  try{const sales=await rpc('list_sales',{p_staff_id:session.id,p_limit:100});
+    if(!Array.isArray(sales))return;
+    const live=sales.filter(s=>!s.voided);
+    const rev=live.reduce((a,s)=>a+Number(s.total_etb||0),0);
+    const lits=live.reduce((a,s)=>a+Number(s.liters||0),0);
+    document.getElementById('dMySales').textContent=rev.toLocaleString(undefined,{maximumFractionDigits:0});
+    document.getElementById('dMyTx').textContent=live.length;
+    document.getElementById('dMyLiters').textContent=lits.toLocaleString(undefined,{maximumFractionDigits:0});
+    const tb=document.getElementById('salesBody');
+    if(live.length===0){tb.innerHTML='<tr><td colspan="4" class="empty">No sales yet</td></tr>';return;}
+    tb.innerHTML=live.slice(0,20).map(s=>{
+      const t=new Date(s.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      return `<tr><td class="mono">${t}</td><td>${s.fuel_type}</td><td class="mono">${s.liters}</td><td class="mono">${Number(s.total_etb).toFixed(2)}</td></tr>`;
+    }).join('');
+  }catch(e){}
+}
+async function attStatus(){
+  try{const r=await rpc('my_attendance_status',{p_staff_id:session.id});
+    const b=document.getElementById('attBanner');
+    if(r.checked_in){b.className='shift-banner shift-open';
+      b.textContent='✔ Checked IN since '+new Date(r.since).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    }else{b.className='shift-banner shift-none';b.textContent='⚠ Not checked in';}
+  }catch(e){}
+}
+async function doCheckIn(){const r=await rpc('check_in',{p_staff_id:session.id});msg('attMsg',r.message,r.success?'success':'error');attStatus();}
+async function doCheckOut(){const r=await rpc('check_out',{p_staff_id:session.id});msg('attMsg',r.message,r.success?'success':'error');attStatus();}
+async function loadNozzles(){
+  try{const r=await rpc('list_nozzles',{});
+    if(Array.isArray(r))document.getElementById('nzSel').innerHTML=r.map(n=>
+      `<option value="${n.id}">${n.nozzle_name} · ${n.fuel_type} (${n.pump_name})</option>`).join('');
+  }catch(e){}
+}
+async function nozzleOpen(){
+  const nz=parseInt(document.getElementById('nzSel').value);
+  const v=parseFloat(document.getElementById('nzVal').value);
+  if(isNaN(v)){msg('nzMsg','Enter meter reading','error');return;}
+  const r=await rpc('nozzle_open',{p_staff_id:session.id,p_nozzle_id:nz,p_opening:v});
+  msg('nzMsg',r.message,r.success?'success':'error');
+  if(r.success){document.getElementById('nzVal').value='';loadMyReadings();}
+}
+async function nozzleClose(){
+  const nz=parseInt(document.getElementById('nzSel').value);
+  const v=parseFloat(document.getElementById('nzVal').value);
+  if(isNaN(v)){msg('nzMsg','Enter meter reading','error');return;}
+  const r=await rpc('nozzle_close',{p_staff_id:session.id,p_nozzle_id:nz,p_closing:v});
+  msg('nzMsg',r.message,r.success?'success':'error');
+  if(r.success){document.getElementById('nzVal').value='';loadMyReadings();}
+}
+async function loadMyReadings(){
+  try{const r=await rpc('my_nozzle_readings',{p_staff_id:session.id});
+    const tb=document.getElementById('nzBody');
+    if(!Array.isArray(r)||r.length===0){tb.innerHTML='<tr><td colspan="5" class="empty">No readings this shift</td></tr>';return;}
+    tb.innerHTML=r.map(x=>{
+      const lit=(x.closing!=null)?(x.closing-x.opening).toFixed(1):'—';
+      return `<tr><td>${x.nozzle_name}</td><td>${x.fuel_type}</td><td class="mono">${x.opening}</td>
+        <td class="mono">${x.closing??'—'}</td><td class="mono">${lit}</td></tr>`;}).join('');
+  }catch(e){}
+}
+
+function refreshAll(){
+  loadMyData();loadTanks();loadPrices();
+  UI.stampUpdated('updStamp');
+}
+
+(function init(){
+  session=JSON.parse(localStorage.getItem('magpms_staff')||'null');
+  if(!session||!session.success){location.href='index.html';return;}
+  document.getElementById('whoami').textContent=session.full_name+' · '+session.role;
+  document.getElementById('noticeName').textContent=session.full_name;
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='block';
+  loadMyData();loadPrices();loadCustomers();checkShift();loadTanks();
+  attStatus();loadNozzles();loadMyReadings();
+  UI.stampUpdated('updStamp');
+  setInterval(refreshAll,60000);
+})();
+</script>
+</body>
+</html>

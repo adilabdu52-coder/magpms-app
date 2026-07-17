@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<meta name="theme-color" content="#0e1520"/>
+<title>MAGPMS — Cloud Fuel Station</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="css/theme.css"/>
+</head>
+<body>
+<button class="theme-btn login-theme" id="themeBtn" aria-label="Switch theme">🌙</button>
+
+<div id="loginPage">
+  <div class="login-wrap">
+    <div class="login-brand">
+      <div class="logo-ring">⛽</div>
+      <h1>MAGPMS</h1>
+      <p>Mohamed Abdu Hirna Gomeju Petroleum — Hirna Town, Oromia</p>
+      <span class="cloud-tag">☁ Supabase Cloud</span>
+    </div>
+
+    <!-- LOGIN CARD -->
+    <div class="login-card" id="loginCard">
+      <div class="role-tabs">
+        <button class="role-tab active" data-role="staff" onclick="setRole('staff',this)">👷 Staff</button>
+        <button class="role-tab" data-role="admin" onclick="setRole('admin',this)">🛡 Admin</button>
+      </div>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="lgUser" autocomplete="username"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="lgPass" autocomplete="current-password"/>
+      </div>
+      <button class="btn btn-gold" id="lgBtn" onclick="doLogin()">🔐 Sign In</button>
+      <div class="msg" id="lgMsg"></div>
+      <div class="switch-link">New staff member? <a onclick="showSignup()">Create account</a></div>
+    </div>
+
+    <!-- SIGNUP CARD -->
+    <div class="login-card hidden" id="signupCard">
+      <div class="field">
+        <label>Full Name</label>
+        <input type="text" id="suName"/>
+      </div>
+      <div class="field">
+        <label>Phone</label>
+        <input type="text" id="suPhone" placeholder="09xxxxxxxx"/>
+      </div>
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="suUser"/>
+      </div>
+      <div class="field">
+        <label>Password (min 6)</label>
+        <input type="password" id="suPass"/>
+      </div>
+      <button class="btn btn-gold" id="suBtn" onclick="doSignup()">✍ Create Staff Account</button>
+      <div class="msg" id="suMsg"></div>
+      <div class="field-hint">Account requires admin approval before login</div>
+      <div class="switch-link">Already have an account? <a onclick="showLogin()">Sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="js/ui.js"></script>
+<script>
+let role='staff';
+
+function setRole(r,btn){
+  role=r;
+  document.querySelectorAll('.role-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+}
+function showSignup(){document.getElementById('loginCard').classList.add('hidden');document.getElementById('signupCard').classList.remove('hidden');}
+function showLogin(){document.getElementById('signupCard').classList.add('hidden');document.getElementById('loginCard').classList.remove('hidden');}
+
+// Enter key
+document.getElementById('lgPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+
+async function doLogin(){
+  const u=document.getElementById('lgUser').value.trim();
+  const p=document.getElementById('lgPass').value;
+  if(!u||!p){msg('lgMsg','Enter username and password','error');return;}
+  const btn=document.getElementById('lgBtn');
+  btn.disabled=true;btn.textContent='Signing in...';
+  try{
+    const data=await rpc(role==='admin'?'login_admin':'login_staff',{p_username:u,p_password:p});
+    if(data.success){
+      msg('lgMsg','Welcome, '+data.full_name,'success');
+      localStorage.setItem(role==='admin'?'magpms_admin':'magpms_staff',JSON.stringify(data));
+      setTimeout(()=>{location.href=role==='admin'?'admin.html':'staff.html';},500);
+    }else{
+      msg('lgMsg',data.message||'Login failed','error');
+    }
+  }catch(e){msg('lgMsg','Connection error — check internet','error');}
+  finally{btn.disabled=false;btn.textContent='🔐 Sign In';}
+}
+
+async function doSignup(){
+  const name=document.getElementById('suName').value.trim();
+  const phone=document.getElementById('suPhone').value.trim();
+  const user=document.getElementById('suUser').value.trim();
+  const pass=document.getElementById('suPass').value;
+  if(!name||!user||pass.length<6){msg('suMsg','Fill all fields (password min 6 chars)','error');return;}
+  const btn=document.getElementById('suBtn');
+  btn.disabled=true;btn.textContent='Creating...';
+  try{
+    const data=await rpc('register_staff',{p_full_name:name,p_username:user,p_password:pass,p_phone:phone});
+    msg('suMsg',data.message||'Done',data.success?'success':'error');
+    if(data.success){document.getElementById('suName').value='';document.getElementById('suUser').value='';document.getElementById('suPass').value='';document.getElementById('suPhone').value='';}
+  }catch(e){msg('suMsg','Connection error — check internet','error');}
+  finally{btn.disabled=false;btn.textContent='✍ Create Staff Account';}
+}
+</script>
+</body>
+</html>
