@@ -41,8 +41,9 @@ import java.nio.charset.StandardCharsets;
  */
 public class MainActivity extends AppCompatActivity {
 
-    private static final String APP_HOST = "appassets.androidplatform.net";
-    private static final String APP_URL = "https://" + APP_HOST + "/assets/index.html";
+    private static final String APP_HOST = "magmps.github.io";
+    private static final String APP_URL = "https://" + APP_HOST + "/magpms2/index.html";
+    private static final String ASSET_HOST = "appassets.androidplatform.net";
     private static final int REQ_LOCATION = 41;
 
     private WebView web;
@@ -93,7 +94,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public boolean shouldOverrideUrlLoading(@NonNull WebView view, @NonNull WebResourceRequest request) {
                 Uri url = request.getUrl();
-                if (APP_HOST.equals(url.getHost())) return false;
+                String host = url.getHost();
+                if (APP_HOST.equals(host) || ASSET_HOST.equals(host)) return false;
                 // External links (map attribution etc.) open in the browser.
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, url));
