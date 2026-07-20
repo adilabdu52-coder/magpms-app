@@ -35,14 +35,16 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
 /**
- * MAGPMS shell: hosts the local Magmaps web app (assets/) in a WebView with
+ * MAGPMS shell: hosts the live MAGPMS web app in a WebView with
  * pull-to-refresh, load progress, an error screen, geolocation support,
  * file import (chooser) and JSON export (Storage Access Framework).
  */
 public class MainActivity extends AppCompatActivity {
 
-    private static final String APP_HOST = "magmps.github.io";
-    private static final String APP_URL = "https://" + APP_HOST + "/magpms2/index.html";
+    private static final String APP_HOST = "hamtilton32.netlify.app";
+    private static final String APP_URL = "https://" + APP_HOST + "/";
+    /** Previous home of the web app; kept in-app so old links keep working. */
+    private static final String LEGACY_HOST = "magmps.github.io";
     private static final String ASSET_HOST = "appassets.androidplatform.net";
     private static final int REQ_LOCATION = 41;
 
@@ -95,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean shouldOverrideUrlLoading(@NonNull WebView view, @NonNull WebResourceRequest request) {
                 Uri url = request.getUrl();
                 String host = url.getHost();
-                if (APP_HOST.equals(host) || ASSET_HOST.equals(host)) return false;
+                if (APP_HOST.equals(host) || LEGACY_HOST.equals(host) || ASSET_HOST.equals(host)) return false;
                 // External links (map attribution etc.) open in the browser.
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, url));
