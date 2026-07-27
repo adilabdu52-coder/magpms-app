@@ -131,10 +131,13 @@ skipped by calling the RPC directly.
 
 ## Where these pages run
 
-`MainActivity` loads the published website
-(`https://magmps.github.io/magpms2/index.html`), not the copies in `app/src/main/assets/`.
-Publish the same four files — `admin.html`, `staff.html`, `index.html`, `js/ui.js`,
-`css/theme.css`, `config.js` — to that site for the phones to pick the changes up.
+`MainActivity` starts on the pages bundled in `app/src/main/assets/`, served over https by
+`WebViewAssetLoader`. A page change reaches the phones with the next APK — no website step.
+Data still comes from Supabase over the network.
+
+To go back to loading the published website instead, set `USE_BUNDLED_PAGES = false` in
+`MainActivity.java` and publish `admin.html`, `staff.html`, `index.html`, `js/ui.js`,
+`css/theme.css` and `config.js` to that site.
 
 ---
 
