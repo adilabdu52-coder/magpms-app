@@ -87,7 +87,14 @@
     }, 2400);
   }
 
-  /* ---------- modal dialogs (replace alert/confirm/prompt) ---------- */
+  /* ---------- modal dialogs (replace alert/confirm/prompt) ----------
+     openDialog({title, text, fields:[...], okText, danger, countdown, validate})
+       fields   — [{key,label,type,value,placeholder,hint,step,options}]
+                  type: text | password | number | select
+       validate — fn(values) -> error string keeps the dialog open
+       countdown— seconds the OK button stays disabled (destructive actions)
+     Resolves with {key:value} when fields are used, true for a plain
+     confirm, or null when cancelled. ---------------------------------- */
   function ensureModal() {
     var bd = document.getElementById("uiModal");
     if (bd) return bd;
@@ -98,10 +105,8 @@
       '<div class="modal">' +
       '<h3 id="umTitle"></h3>' +
       '<p id="umText"></p>' +
-      '<div class="field hidden" id="umField" style="margin-top:12px">' +
-      '<label id="umLabel"></label>' +
-      '<input id="umInput" type="number" step="0.01" min="0" inputmode="decimal"/>' +
-      "</div>" +
+      '<div id="umFields" style="margin-top:12px"></div>' +
+      '<div class="msg" id="umMsg"></div>' +
       '<div class="m-actions">' +
       '<button class="btn btn-ghost" id="umCancel">Cancel</button>' +
       '<button class="btn" id="umOk">OK</button>' +
@@ -110,57 +115,143 @@
     bd.addEventListener("click", function (e) { if (e.target === bd) closeDialog(null); });
     return bd;
   }
-  var pendingResolve = null;
+  var pendingResolve = null, countdownTimer = null;
+
   function closeDialog(value) {
     var bd = document.getElementById("uiModal");
     if (bd) bd.classList.remove("open");
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
     if (pendingResolve) { pendingResolve(value); pendingResolve = null; }
     syncBridge();
   }
+
+  function buildFields(host, fields) {
+    host.innerHTML = "";
+    fields.forEach(function (f) {
+      var wrap = document.createElement("div");
+      wrap.className = "field";
+      var lab = document.createElement("label");
+      lab.textContent = f.label || f.key;
+      wrap.appendChild(lab);
+      var input;
+      if (f.type === "select") {
+        input = document.createElement("select");
+        (f.options || []).forEach(function (o) {
+          var op = document.createElement("option");
+          op.value = o.value;
+          op.textContent = o.label;
+          if (String(o.value) === String(f.value)) op.selected = true;
+          input.appendChild(op);
+        });
+      } else {
+        input = document.createElement("input");
+        input.type = f.type || "text";
+        if (f.type === "number") { input.step = f.step || "0.01"; input.inputMode = "decimal"; }
+        if (f.placeholder) input.placeholder = f.placeholder;
+        if (f.autocomplete) input.autocomplete = f.autocomplete;
+        if (f.value !== undefined && f.value !== null) input.value = f.value;
+      }
+      input.setAttribute("data-key", f.key);
+      wrap.appendChild(input);
+      if (f.hint) {
+        var h = document.createElement("div");
+        h.className = "field-hint";
+        h.style.textAlign = "left";
+        h.textContent = f.hint;
+        wrap.appendChild(h);
+      }
+      host.appendChild(wrap);
+    });
+  }
+
+  function readFields(host) {
+    var out = {};
+    host.querySelectorAll("[data-key]").forEach(function (el) {
+      out[el.getAttribute("data-key")] = el.value;
+    });
+    return out;
+  }
+
   function openDialog(opts) {
     var bd = ensureModal();
     bd.querySelector("#umTitle").textContent = opts.title || "";
-    bd.querySelector("#umText").textContent = opts.text || "";
-    var field = bd.querySelector("#umField");
-    var input = bd.querySelector("#umInput");
-    if (opts.input) {
-      field.classList.remove("hidden");
-      bd.querySelector("#umLabel").textContent = opts.inputLabel || "";
-      input.value = "";
-      input.type = opts.inputType || "number";
-    } else {
-      field.classList.add("hidden");
-    }
+    var textEl = bd.querySelector("#umText");
+    textEl.textContent = opts.text || "";
+    textEl.style.display = opts.text ? "" : "none";
+
+    var fields = opts.fields || [];
+    var host = bd.querySelector("#umFields");
+    buildFields(host, fields);
+
+    var errEl = bd.querySelector("#umMsg");
+    errEl.className = "msg";
+    errEl.textContent = "";
+
     var ok = bd.querySelector("#umOk");
-    ok.textContent = opts.okText || "OK";
-    ok.className = "btn " + (opts.danger ? "btn-no" : "btn-gold");
-    ok.style.width = "auto";
     var okFresh = ok.cloneNode(true);
     ok.parentNode.replaceChild(okFresh, ok);
-    okFresh.addEventListener("click", function () {
-      closeDialog(opts.input ? input.value : true);
+    var okLabel = opts.okText || "OK";
+    okFresh.textContent = okLabel;
+    okFresh.className = "btn " + (opts.danger ? "btn-no" : "btn-gold");
+    okFresh.style.width = "auto";
+    okFresh.disabled = false;
+
+    function submit() {
+      if (okFresh.disabled) return;
+      var vals = fields.length ? readFields(host) : {};
+      if (opts.validate) {
+        var err = opts.validate(vals);
+        if (err) { errEl.textContent = err; errEl.className = "msg error"; return; }
+      }
+      closeDialog(fields.length ? vals : true);
+    }
+    okFresh.addEventListener("click", submit);
+    host.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target.tagName === "INPUT") { e.preventDefault(); submit(); }
     });
+
     var cancel = bd.querySelector("#umCancel");
     var cancelFresh = cancel.cloneNode(true);
     cancel.parentNode.replaceChild(cancelFresh, cancel);
     cancelFresh.addEventListener("click", function () { closeDialog(null); });
+
+    if (countdownTimer) { clearInterval(countdownTimer); countdownTimer = null; }
+    if (opts.countdown > 0) {
+      var left = opts.countdown;
+      okFresh.disabled = true;
+      okFresh.textContent = okLabel + " (" + left + ")";
+      countdownTimer = setInterval(function () {
+        left--;
+        if (left <= 0) {
+          clearInterval(countdownTimer); countdownTimer = null;
+          okFresh.disabled = false;
+          okFresh.textContent = okLabel;
+        } else {
+          okFresh.textContent = okLabel + " (" + left + ")";
+        }
+      }, 1000);
+    }
+
     return new Promise(function (resolve) {
       pendingResolve = resolve;
       bd.classList.add("open");
       syncBridge();
-      if (opts.input) setTimeout(function () { input.focus(); }, 80);
+      var first = host.querySelector("[data-key]");
+      if (first) setTimeout(function () { first.focus(); }, 80);
     });
   }
   function confirmDlg(title, text, okText, danger) {
     return openDialog({ title: title, text: text, okText: okText || "Confirm", danger: danger !== false });
   }
   function promptNumber(title, text, label) {
-    return openDialog({ title: title, text: text, input: true, inputLabel: label, okText: "Save", danger: false })
-      .then(function (v) {
-        if (v === null) return null;
-        var n = parseFloat(v);
-        return isNaN(n) ? null : n;
-      });
+    return openDialog({
+      title: title, text: text, okText: "Save", danger: false,
+      fields: [{ key: "value", label: label, type: "number", step: "0.01" }]
+    }).then(function (v) {
+      if (!v) return null;
+      var n = parseFloat(v.value);
+      return isNaN(n) ? null : n;
+    });
   }
 
   /* ---------- connection banner + rpc wrapper ---------- */
@@ -202,6 +293,25 @@
     }).length;
   }
 
+  /* ---------- JSON export (Android SAF when available, else download) ---------- */
+  function saveJson(filename, obj) {
+    var text = JSON.stringify(obj, null, 2);
+    if (window.AndroidBridge && AndroidBridge.saveFile) {
+      AndroidBridge.saveFile(filename, text);
+      return "android";
+    }
+    var blob = new Blob([text], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    return "browser";
+  }
+
   /* ---------- "last updated" stamp ---------- */
   function stampUpdated(id) {
     var el = document.getElementById(id);
@@ -232,9 +342,9 @@
 
   /* expose globals used by the page scripts */
   window.UI = {
-    toast: toast, confirmDlg: confirmDlg, promptNumber: promptNumber,
+    toast: toast, confirmDlg: confirmDlg, promptNumber: promptNumber, form: openDialog,
     tankRow: tankRow, lowTankCount: lowTankCount, stampUpdated: stampUpdated,
-    netFail: netFail, netOk: netOk
+    netFail: netFail, netOk: netOk, saveJson: saveJson
   };
   window.toggleMenu = toggleMenu;
   window.go = go;
