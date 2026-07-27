@@ -135,3 +135,21 @@ skipped by calling the RPC directly.
 (`https://magmps.github.io/magpms2/index.html`), not the copies in `app/src/main/assets/`.
 Publish the same four files — `admin.html`, `staff.html`, `index.html`, `js/ui.js`,
 `css/theme.css`, `config.js` — to that site for the phones to pick the changes up.
+
+---
+
+## Installing the app
+
+Every push to `main` publishes an installable APK under
+[**Releases**](../../releases) — a permanent link, no GitHub login needed to download it.
+
+On the phone: open the newest release, tap `MAGPMS-vX.Y-buildN.apk`, allow *install from
+this source*. It installs over the old app and keeps nothing on the device except the
+login session, which is cleared once by the move to the bundled pages.
+
+Two checks run on every pull request:
+
+* **pages** — syntax-checks the web app that ships in the APK (`node tools/check-pages.js`,
+  runs locally too), so a typo in `admin.html` fails CI instead of reaching a phone as a
+  blank screen.
+* **build** — compiles the Android app.

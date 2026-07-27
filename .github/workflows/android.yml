@@ -8,6 +8,22 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Cheap guard on the web app that ships inside the APK: a syntax error in
+  # admin.html only shows up as a blank WebView on the phone otherwise.
+  pages:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Check the web pages
+      run: node tools/check-pages.js
+
   build:
 
     runs-on: ubuntu-latest
