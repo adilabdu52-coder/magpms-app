@@ -91,6 +91,9 @@ async function doLogin(){
     const data=await rpc(role==='admin'?'login_admin':'login_staff',{p_username:u,p_password:p});
     if(data.success){
       msg('lgMsg','Welcome, '+data.full_name,'success');
+      // Keep the username in the session: the admin Danger Zone re-checks the
+      // password with login_admin before any destructive action.
+      if(!data.username) data.username=u;
       localStorage.setItem(role==='admin'?'magpms_admin':'magpms_staff',JSON.stringify(data));
       setTimeout(()=>{location.href=role==='admin'?'admin.html':'staff.html';},500);
     }else{

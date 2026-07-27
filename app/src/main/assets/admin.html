@@ -37,6 +37,8 @@
   <div class="mi" data-s="expenses" onclick="go('expenses',this)"><span class="ic">💸</span> Expenses</div>
   <div class="mi" data-s="reports" onclick="go('reports',this)"><span class="ic">📈</span> Staff Report</div>
   <div class="mi" data-s="shifts" onclick="go('shifts',this)"><span class="ic">🕒</span> Shifts &amp; Attendance</div>
+  <div class="mi" data-s="fixes" onclick="go('fixes',this)"><span class="ic">🛠</span> Corrections<span class="mi-badge hidden" id="miIssueBadge">0</span></div>
+  <div class="mi" data-s="backup" onclick="go('backup',this)"><span class="ic">🛟</span> Backup &amp; Danger Zone</div>
 </nav>
 
 <div class="wrap">
@@ -47,6 +49,13 @@
   <div class="sub">Live station overview</div>
 
   <div class="clock"><div class="d" id="clockDate">—</div><div class="t" id="clockTime">—</div></div>
+
+  <div class="notice hidden" id="issueNotice" style="cursor:pointer" onclick="go('fixes')">
+    ⚠ <span><b id="issueNoticeN">0</b> reported sale mistake(s) waiting — today's totals may be wrong until they are fixed. Tap to review.</span>
+  </div>
+  <div class="notice hidden" id="backupNotice" style="cursor:pointer;border-color:var(--accent);background:var(--accent-soft);color:var(--accent)" onclick="go('backup')">
+    💾 <span id="backupNoticeTxt">No backup taken yet — download a JSON backup.</span>
+  </div>
 
   <div class="stats">
     <div class="scard"><div class="em">💰</div><div class="lbl">Total Sales</div>
@@ -145,8 +154,8 @@
     </div>
     <div class="table-scroll">
     <table>
-      <thead><tr><th>Time</th><th>Staff</th><th>Fuel</th><th>Liters</th><th>ETB</th><th>Pay</th></tr></thead>
-      <tbody id="salesBody"><tr><td colspan="6" class="empty">Loading...</td></tr></tbody>
+      <thead><tr><th>Time</th><th>Staff</th><th>Fuel</th><th>Liters</th><th>ETB</th><th>Pay</th><th>Actions</th></tr></thead>
+      <tbody id="salesBody"><tr><td colspan="7" class="empty">Loading...</td></tr></tbody>
     </table>
     </div>
   </div>
@@ -237,6 +246,82 @@
   </div>
 </div>
 
+<!-- ================= CORRECTIONS ================= -->
+<div class="section" id="sec-fixes">
+  <h1 class="display">Corrections</h1>
+  <div class="sub">Wrong amounts reported by staff &amp; the fixes you applied</div>
+
+  <div class="card">
+    <h2>⚠ Mistakes Reported by Staff</h2>
+    <div class="warn-note">Staff cannot change a sale after saving it. When they notice a wrong
+      amount — even hours later — they report it here and you decide. Fixing a sale re-adjusts
+      tank stock and the customer's credit balance, so the dashboard and reports become correct again.</div>
+    <div class="tabs">
+      <button class="tab active" onclick="setIssueFilter('open',this)">Open</button>
+      <button class="tab" onclick="setIssueFilter('fixed',this)">Fixed</button>
+      <button class="tab" onclick="setIssueFilter('rejected',this)">Rejected</button>
+      <button class="tab" onclick="setIssueFilter('all',this)">All</button>
+    </div>
+    <div id="issueList" class="empty">Loading...</div>
+  </div>
+
+  <div class="card">
+    <h2>🧾 Correction Log</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Fixed at</th><th>Sale</th><th>Staff</th><th>Liters</th><th>ETB</th><th>Reason</th></tr></thead>
+      <tbody id="corrBody"><tr><td colspan="6" class="empty">No corrections yet</td></tr></tbody>
+    </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= BACKUP + DANGER ZONE ================= -->
+<div class="section" id="sec-backup">
+  <h1 class="display">Backup</h1>
+  <div class="sub">Export your data &amp; protected maintenance</div>
+
+  <div class="card">
+    <h2>💾 JSON Backup</h2>
+    <p class="sub" style="margin-bottom:12px">Downloads sales, staff, tanks, credit customers, expenses,
+      shifts, readings, attendance and prices as one JSON file. Keep a copy off the phone.</p>
+    <div class="field-hint" style="text-align:left;margin-bottom:10px" id="bkStamp">Last backup: never</div>
+    <button class="btn btn-gold" id="bkBtn" onclick="downloadBackup()">⬇ Download JSON Backup</button>
+    <div class="msg" id="bkMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2>🔐 Confirmation Settings</h2>
+    <p class="sub" style="margin-bottom:12px">A destructive action always asks for the admin password.
+      Add an e-mail code for a second lock, or use it when the password is forgotten.</p>
+    <div class="field-hint" style="text-align:left;margin-bottom:10px" id="secEmailNow">Confirmation e-mail: not set</div>
+    <div class="field"><label>Confirmation e-mail</label>
+      <input type="email" id="secEmail" placeholder="owner@example.com" autocomplete="email"/></div>
+    <div class="switch-row">
+      <div><div class="sr-lbl">Also require an e-mail code</div>
+        <div class="sr-sub">Password <b>and</b> a 6-digit code sent to the address above</div></div>
+      <input type="checkbox" id="secRequireCode"/>
+    </div>
+    <button class="btn btn-gold" id="secBtn" onclick="saveSecuritySettings()">💾 Save Settings</button>
+    <div class="msg" id="secMsg"></div>
+  </div>
+
+  <div class="card danger">
+    <h2>☢ Danger Zone</h2>
+    <div class="danger-note">Reset deletes every sale, expense, shift, nozzle reading, attendance record,
+      correction and credit balance. Staff accounts, tanks and prices are kept. <b>It cannot be undone.</b></div>
+    <ul class="steps" id="resetSteps">
+      <li id="stepBackup"><span class="bx">1</span><span>Download a JSON backup first</span></li>
+      <li id="stepPhrase"><span class="bx">2</span><span>Type <b>RESET ALL DATA</b> to confirm</span></li>
+      <li id="stepAuth"><span class="bx">3</span><span>Re-enter the admin password (or confirm by e-mail code)</span></li>
+      <li id="stepFinal"><span class="bx">4</span><span>Hold on the final 8-second confirmation</span></li>
+    </ul>
+    <button class="btn btn-out" style="width:100%;padding:12px" id="resetBtn" onclick="startReset()">
+      ☢ Reset ALL Data</button>
+    <div class="msg" id="resetMsg"></div>
+  </div>
+</div>
+
 </div>
 
 <!-- Bottom quick-nav (mobile) -->
@@ -253,7 +338,13 @@
 <script src="config.js"></script>
 <script src="js/ui.js"></script>
 <script>
-let session=null, allStaff=[], allSales=[], filter='pending', payFilter='all';
+let session=null, allStaff=[], allSales=[], allCustomers=[], filter='pending', payFilter='all';
+let allIssues=[], issueFilter='open', correctedIds=new Set();
+let security={require_email_code:false, masked_email:null, last_backup_at:null, backend:false};
+
+const PAY_OPTIONS=[{value:'cash',label:'Cash'},{value:'telebirr',label:'Telebirr'},
+                   {value:'cbe',label:'CBE Birr'},{value:'credit',label:'Credit'}];
+const SQL_HINT='Backend not installed — run supabase/migrations/20260727_corrections_and_danger_zone.sql in the Supabase SQL editor.';
 
 function logout(){localStorage.removeItem('magpms_admin');location.href='index.html';}
 
@@ -408,6 +499,7 @@ async function payCredit(id,name){
 async function loadCustomers(){
   try{
     const r=await rpc('list_credit_customers',{});
+    allCustomers=Array.isArray(r)?r:[];
     const el=document.getElementById('custList');
     if(!Array.isArray(r)||r.length===0){el.className='empty';el.textContent='No credit customers yet';return;}
     el.className='';
@@ -429,13 +521,17 @@ function renderSales(){
   let rows=allSales;
   if(payFilter!=='all')rows=rows.filter(s=>(s.payment_method||'').toLowerCase()===payFilter);
   if(q)rows=rows.filter(s=>(s.staff_name||'').toLowerCase().includes(q)||(s.fuel_type||'').toLowerCase().includes(q));
-  if(rows.length===0){tb.innerHTML='<tr><td colspan="6" class="empty">No matching sales</td></tr>';return;}
+  if(rows.length===0){tb.innerHTML='<tr><td colspan="7" class="empty">No matching sales</td></tr>';return;}
   tb.innerHTML=rows.map(s=>{
     const t=new Date(s.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
     const style=s.voided?' style="opacity:.4;text-decoration:line-through"':'';
-    const act=s.voided?'<span class="tag rejected">void</span>':`<button class="btn btn-no" style="padding:4px 9px;font-size:11px" onclick="voidSale('${s.id}')">Void</button>`;
-    return `<tr${style}><td class="mono">${t}</td><td>${esc(s.staff_name)}</td><td>${s.fuel_type}</td>
-      <td class="mono">${s.liters}</td><td class="mono">${Number(s.total_etb).toFixed(2)}</td><td>${esc(s.payment_method)} ${act}</td></tr>`;
+    const fixed=isCorrected(s)?' <span class="tag fixed">fixed</span>':'';
+    const act=s.voided?'<span class="tag rejected">void</span>':
+      `<button class="btn btn-blue" style="padding:4px 9px;font-size:11px" onclick="correctSale('${s.id}')">✎ Fix</button>
+       <button class="btn btn-no" style="padding:4px 9px;font-size:11px" onclick="voidSale('${s.id}')">Void</button>`;
+    return `<tr${style}><td class="mono">${t}</td><td>${esc(s.staff_name)}${fixed}</td><td>${s.fuel_type}</td>
+      <td class="mono">${s.liters}</td><td class="mono">${Number(s.total_etb).toFixed(2)}</td>
+      <td>${esc(s.payment_method)}</td><td style="white-space:nowrap">${act}</td></tr>`;
   }).join('');
 }
 async function loadSales(){
@@ -451,6 +547,149 @@ async function voidSale(id){
   const r=await rpc('admin_void_sale',{p_admin_id:session.id,p_sale_id:id});
   UI.toast(r.message||'Done',r.success?'ok':'err');
   if(r.success){loadSales();loadTanks();loadCustomers();loadReports();loadDashboard();}
+}
+
+/* ================= CORRECTIONS =================
+   A sale is never edited silently: every change keeps the old values in the
+   correction log, re-adjusts tank stock + credit balance, and closes the
+   staff report that asked for it — so the reports stop being wrong. */
+function isCorrected(s){return !!s.corrected_at||correctedIds.has(String(s.id));}
+
+async function correctSale(saleId, issue){
+  const s=allSales.find(x=>String(x.id)===String(saleId));
+  if(!s){UI.toast('Open the Sales page first','err');return;}
+  const liters=Number(s.liters)||0, total=Number(s.total_etb)||0;
+  const unit=liters>0?total/liters:0;
+  const when=new Date(s.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const custOpts=[{value:'',label:'— none —'}].concat(allCustomers.map(c=>({value:c.id,label:c.name})));
+  const what=issue&&issue.field==='amount'?'amount':(issue&&issue.field==='payment'?'payment':'liters');
+
+  const v=await UI.form({
+    title:'Correct Sale',
+    text:`${s.fuel_type} · ${liters} L · ${total.toFixed(2)} ETB · ${s.payment_method} — by ${s.staff_name} at ${when}.`,
+    okText:'Apply Correction',
+    fields:[
+      {key:'what',label:'What was wrong',type:'select',value:what,options:[
+        {value:'liters',label:'Liters'},{value:'amount',label:'Amount (ETB)'},{value:'payment',label:'Payment only'}]},
+      {key:'value',label:'Correct value',type:'number',step:'0.01',
+       value:(issue&&issue.claimed_value!=null)?Number(issue.claimed_value):(what==='amount'?total.toFixed(2):liters),
+       hint:unit>0?('The other value is recalculated at '+unit.toFixed(2)+' ETB/L — the price this sale was sold at'):''},
+      {key:'payment',label:'Payment method',type:'select',value:(s.payment_method||'cash').toLowerCase(),options:PAY_OPTIONS},
+      {key:'customer',label:'Credit customer (only for credit)',type:'select',value:s.credit_customer_id||'',options:custOpts},
+      {key:'reason',label:'Reason (required)',type:'text',placeholder:'e.g. pump showed 20 L, 200 L was typed',
+       hint:'Stored in the correction log with your name and the old values'}
+    ],
+    validate:x=>{
+      if((x.reason||'').trim().length<4)return 'Write a short reason';
+      if(x.payment==='credit'&&!x.customer)return 'Choose the credit customer';
+      if(x.what==='payment')return null;
+      const n=parseFloat(x.value);
+      if(isNaN(n)||n<=0)return 'Enter the correct value';
+      if(x.what==='liters'&&n===liters&&x.payment===(s.payment_method||'').toLowerCase())return 'Nothing changed';
+      if(x.what==='amount'&&n===total&&x.payment===(s.payment_method||'').toLowerCase())return 'Nothing changed';
+      return null;
+    }
+  });
+  if(!v)return;
+
+  const n=parseFloat(v.value);
+  const r=await rpc('admin_correct_sale',{
+    p_admin_id:session.id, p_sale_id:String(saleId),
+    p_new_liters:v.what==='liters'?n:null,
+    p_new_total: v.what==='amount'?n:null,
+    p_new_payment:v.payment,
+    p_new_credit_customer:v.payment==='credit'?String(v.customer):null,
+    p_reason:v.reason.trim(),
+    p_issue_id:issue?issue.id:null
+  });
+  if(rpcFailed(r)){UI.toast(SQL_HINT,'err');return;}
+  UI.toast(r.message||'Done',r.success?'ok':'err');
+  if(r.success)refreshAfterFix();
+}
+
+function setIssueFilter(f,btn){
+  issueFilter=f;
+  document.querySelectorAll('#sec-fixes .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderIssues();
+}
+function renderIssues(){
+  const el=document.getElementById('issueList');
+  let rows=issueFilter==='all'?allIssues:allIssues.filter(i=>i.status===issueFilter);
+  if(rows.length===0){el.className='empty';el.textContent='Nothing here';return;}
+  el.className='';
+  el.innerHTML=rows.map(i=>{
+    const when=i.sale_time?new Date(i.sale_time).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+    const said=new Date(i.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    const tag=i.status==='open'?'pending':(i.status==='fixed'?'fixed':'rejected');
+    const claim=i.claimed_value!=null?`should be <b>${Number(i.claimed_value).toFixed(2)}</b>`:'is wrong';
+    return `<div class="row"><div class="info">
+      <h3>${esc(i.staff_name||'staff')} · sale of ${when}</h3>
+      <p>${esc(i.fuel_type||'')} · ${i.liters!=null?Number(i.liters).toFixed(2):'—'} L ·
+         ${i.total_etb!=null?Number(i.total_etb).toFixed(2):'—'} ETB · ${esc(i.payment_method||'')}</p>
+      <p><b>${esc(i.field)}</b> ${claim}${i.note?' — '+esc(i.note):''} <span class="mono">(reported ${said})</span></p>
+      <span class="tag ${tag}">${i.status}</span></div>
+      <div style="display:flex;gap:6px">${i.status==='open'?`
+        <button class="btn btn-ok" onclick="fixFromIssue(${i.id})">✎ Fix sale</button>
+        <button class="btn btn-no" onclick="rejectIssue(${i.id})">Reject</button>`:''}</div></div>`;
+  }).join('');
+}
+function fixFromIssue(id){
+  const i=allIssues.find(x=>x.id===id);
+  if(!i)return;
+  correctSale(i.sale_id,i);
+}
+async function rejectIssue(id){
+  const v=await UI.form({title:'Reject report',text:'The sale stays as it is. Tell the staff member why.',
+    okText:'Reject report',danger:true,
+    fields:[{key:'note',label:'Reason',type:'text',placeholder:'e.g. checked the pump slip, amount is correct'}],
+    validate:x=>((x.note||'').trim().length<4?'Write a short reason':null)});
+  if(!v)return;
+  const r=await rpc('admin_resolve_sale_issue',{p_admin_id:session.id,p_issue_id:id,p_status:'rejected',p_note:v.note.trim()});
+  if(rpcFailed(r)){UI.toast(SQL_HINT,'err');return;}
+  UI.toast(r.message||'Done',r.success?'ok':'err');
+  if(r.success){loadIssues();}
+}
+async function loadIssues(){
+  try{
+    const r=await rpc('admin_list_sale_issues',{p_status:null,p_limit:100});
+    const el=document.getElementById('issueList');
+    if(rpcFailed(r)){allIssues=[];el.className='empty';el.textContent=SQL_HINT;updateIssueBadge();return;}
+    allIssues=Array.isArray(r)?r:[];
+    renderIssues();updateIssueBadge();
+  }catch(e){}
+}
+function updateIssueBadge(){
+  const open=allIssues.filter(i=>i.status==='open').length;
+  const badge=document.getElementById('miIssueBadge');
+  badge.textContent=open;badge.classList.toggle('hidden',open===0);
+  const notice=document.getElementById('issueNotice');
+  document.getElementById('issueNoticeN').textContent=open;
+  notice.classList.toggle('hidden',open===0);
+}
+async function loadCorrections(){
+  try{
+    const r=await rpc('admin_list_corrections',{p_limit:50});
+    const tb=document.getElementById('corrBody');
+    if(rpcFailed(r)||!Array.isArray(r)||r.length===0){
+      tb.innerHTML='<tr><td colspan="6" class="empty">'+(rpcFailed(r)?SQL_HINT:'No corrections yet')+'</td></tr>';
+      return;
+    }
+    correctedIds=new Set(r.map(c=>String(c.sale_id)));
+    tb.innerHTML=r.map(c=>{
+      const t=new Date(c.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const st=c.sale_time?new Date(c.sale_time).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—';
+      const arrow=(a,b)=>`${Number(a).toFixed(2)} → <b>${Number(b).toFixed(2)}</b>`;
+      return `<tr><td class="mono">${t}</td><td class="mono">${st}</td><td>${esc(c.staff_name||'')}</td>
+        <td class="mono">${arrow(c.old_liters,c.new_liters)}</td>
+        <td class="mono">${arrow(c.old_total,c.new_total)}</td>
+        <td>${esc(c.reason||'')}<div class="mono muted">by ${esc(c.admin_name||'admin')}</div></td></tr>`;
+    }).join('');
+    renderSales();
+  }catch(e){}
+}
+function refreshAfterFix(){
+  loadSales();loadIssues();loadCorrections();loadTanks();loadCustomers();loadReports();loadDashboard();
 }
 
 /* EXPENSES */
@@ -569,8 +808,217 @@ async function loadAttendance(){
   }catch(e){}
 }
 
+/* ================= BACKUP ================= */
+function lastBackupAt(){
+  const local=localStorage.getItem('magpms_last_backup');
+  const server=security.last_backup_at;
+  const dates=[local,server].filter(Boolean).map(d=>new Date(d)).filter(d=>!isNaN(d));
+  return dates.length?new Date(Math.max.apply(null,dates)):null;
+}
+function backupAgeHours(){
+  const d=lastBackupAt();
+  return d?(Date.now()-d.getTime())/3600000:Infinity;
+}
+function renderBackupState(){
+  const d=lastBackupAt();
+  const age=backupAgeHours();
+  document.getElementById('bkStamp').textContent=d
+    ? 'Last backup: '+d.toLocaleString('en-GB')+(age>24?'  ⚠ older than 24 h':'')
+    : 'Last backup: never';
+  const notice=document.getElementById('backupNotice');
+  const stale=age>168;                       /* one week */
+  notice.classList.toggle('hidden',!(!d||stale));
+  document.getElementById('backupNoticeTxt').textContent=d
+    ? 'Last backup was '+Math.round(age/24)+' days ago — download a fresh JSON backup.'
+    : 'No backup taken yet — download a JSON backup.';
+  document.getElementById('stepBackup').classList.toggle('done',age<=24);
+}
+async function downloadBackup(){
+  const btn=document.getElementById('bkBtn');
+  btn.disabled=true;btn.textContent='Collecting data...';
+  try{
+    const [prices,tanks,sales,custs,expenses,staff,shifts,readings,att,nozzles,daily]=await Promise.all([
+      rpc('get_prices',{}), rpc('list_tanks',{}), rpc('list_sales',{p_staff_id:null,p_limit:5000}),
+      rpc('list_credit_customers',{}), rpc('list_expenses',{p_limit:5000}), rpc('admin_list_staff',{p_status:null}),
+      rpc('admin_list_shifts',{p_limit:1000}), rpc('admin_list_readings',{p_limit:2000}),
+      rpc('admin_list_attendance',{p_limit:2000}), rpc('list_nozzles',{}), rpc('daily_report',{p_days:90})
+    ]);
+    const arr=x=>Array.isArray(x)?x:[];
+    const data={
+      meta:{app:'MAGPMS',format:1,exported_at:new Date().toISOString(),exported_by:session.full_name,
+        counts:{sales:arr(sales).length,expenses:arr(expenses).length,staff:arr(staff).length,
+                shifts:arr(shifts).length,readings:arr(readings).length,attendance:arr(att).length,
+                credit_customers:arr(custs).length}},
+      prices:arr(prices), tanks:arr(tanks), nozzles:arr(nozzles), staff:arr(staff),
+      credit_customers:arr(custs), sales:arr(sales), expenses:arr(expenses), shifts:arr(shifts),
+      nozzle_readings:arr(readings), attendance:arr(att), daily_report:arr(daily)
+    };
+    if(data.sales.length===0&&data.staff.length===0)
+      throw new Error('No data came back from the server');
+    const stamp=new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+    const how=UI.saveJson('magpms-backup-'+stamp+'.json',data);
+    localStorage.setItem('magpms_last_backup',new Date().toISOString());
+    rpc('admin_log_backup',{p_admin_id:session.id}).catch(()=>{});
+    security.last_backup_at=new Date().toISOString();
+    renderBackupState();
+    msg('bkMsg',how==='android'?'Choose where to save the file — '+data.sales.length+' sales included'
+                              :'Backup downloaded — '+data.sales.length+' sales included','success');
+    UI.toast('Backup ready ✔','ok');
+    return true;
+  }catch(e){
+    msg('bkMsg','Could not build the backup — check the connection and try again','error');
+    return false;
+  }finally{btn.disabled=false;btn.textContent='⬇ Download JSON Backup';}
+}
+
+/* ================= CONFIRMATION SETTINGS ================= */
+async function loadSecuritySettings(){
+  try{
+    const r=await rpc('admin_get_security_settings',{});
+    if(rpcFailed(r)||!r||typeof r!=='object'){
+      security.backend=false;
+      document.getElementById('secEmailNow').textContent=SQL_HINT;
+      document.getElementById('secRequireCode').disabled=true;
+      document.getElementById('secBtn').disabled=true;
+    }else{
+      security={require_email_code:!!r.require_email_code, masked_email:r.masked_email||null,
+                last_backup_at:r.last_backup_at||null, backend:true};
+      document.getElementById('secEmailNow').textContent='Confirmation e-mail: '+(security.masked_email||'not set');
+      document.getElementById('secRequireCode').checked=security.require_email_code;
+    }
+  }catch(e){}
+  renderBackupState();
+}
+async function saveSecuritySettings(){
+  const email=document.getElementById('secEmail').value.trim();
+  const need=document.getElementById('secRequireCode').checked;
+  if(email&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){msg('secMsg','Enter a valid e-mail address','error');return;}
+  if(need&&!email&&!security.masked_email){msg('secMsg','Set the confirmation e-mail first','error');return;}
+  const btn=document.getElementById('secBtn');btn.disabled=true;
+  try{
+    const r=await rpc('admin_set_security_settings',
+      {p_admin_id:session.id,p_contact_email:email||null,p_require_email_code:need});
+    if(rpcFailed(r)){msg('secMsg',SQL_HINT,'error');return;}
+    msg('secMsg',r.message||'Saved',r.success?'success':'error');
+    if(r.success){document.getElementById('secEmail').value='';loadSecuritySettings();}
+  }catch(e){msg('secMsg','Connection error','error');}
+  finally{btn.disabled=false;}
+}
+
+/* ================= DANGER ZONE =================
+   Nothing is deleted until: a fresh backup exists, the phrase is typed, the
+   admin password (or an e-mail code) checks out, and an 8-second confirm. */
+async function checkPassword(){
+  const fields=[];
+  if(!session.username)fields.push({key:'user',label:'Admin username',type:'text',autocomplete:'username'});
+  fields.push({key:'pass',label:'Admin password',type:'password',autocomplete:'current-password'});
+  const v=await UI.form({title:'Confirm it is you',text:'Re-enter your admin password to authorise this action.',
+    okText:'Verify',danger:true,fields:fields,
+    validate:x=>((x.pass||'').length?null:'Enter your password')});
+  if(!v)return{ok:false};
+  try{
+    const r=await rpc('login_admin',{p_username:session.username||v.user,p_password:v.pass});
+    if(r&&r.success&&(r.id==null||String(r.id)===String(session.id)))return{ok:true};
+    if(r&&r.success)return{ok:false,message:'That password belongs to another admin account'};
+    return{ok:false,message:(r&&r.message)||'Password is wrong'};
+  }catch(e){return{ok:false,message:'Connection error — nothing was changed'};}
+}
+async function emailCodeFlow(action){
+  if(!security.masked_email)
+    return{ok:false,message:'No confirmation e-mail set — add one under Confirmation Settings'};
+  UI.toast('Sending code…');
+  let sent;
+  try{sent=await edgeFn('send-danger-code',{admin_id:session.id,action:action});}
+  catch(e){return{ok:false,message:'Could not reach the e-mail service'};}
+  if(!sent||!sent.success)
+    return{ok:false,message:(sent&&sent.message)||'Could not send the confirmation e-mail'};
+  const v=await UI.form({title:'E-mail confirmation',
+    text:'A 6-digit code was sent to '+(sent.masked_email||security.masked_email)+'. It expires in 10 minutes.',
+    okText:'Verify code',danger:true,
+    fields:[{key:'code',label:'6-digit code',type:'text',placeholder:'000000'}],
+    validate:x=>(/^\d{6}$/.test((x.code||'').trim())?null:'Enter the 6-digit code')});
+  if(!v)return{ok:false};
+  const r=await rpc('admin_verify_danger_code',{p_admin_id:session.id,p_action:action,p_code:v.code.trim()});
+  if(rpcFailed(r))return{ok:false,message:SQL_HINT};
+  if(!r.success)return{ok:false,message:r.message||'Code not accepted'};
+  return{ok:true,token:r.token};
+}
+async function verifyIdentity(action){
+  const needCode=!!security.require_email_code;
+  let method='password';
+  if(!needCode&&security.masked_email){
+    const pick=await UI.form({title:'Confirm it is you',okText:'Continue',
+      fields:[{key:'m',label:'Confirm with',type:'select',value:'password',options:[
+        {value:'password',label:'Admin password'},
+        {value:'email',label:'E-mail code to '+security.masked_email}]}]});
+    if(!pick)return{ok:false};
+    method=pick.m;
+  }
+  document.getElementById('stepAuth').classList.remove('done');
+  if(method==='password'||needCode){
+    const p=await checkPassword();
+    if(!p.ok)return p;
+  }
+  let token=null;
+  if(method==='email'||needCode){
+    const c=await emailCodeFlow(action);
+    if(!c.ok)return c;
+    token=c.token;
+  }
+  document.getElementById('stepAuth').classList.add('done');
+  return{ok:true,token:token,method:method};
+}
+async function startReset(){
+  const steps=['stepPhrase','stepAuth','stepFinal'];
+  steps.forEach(id=>document.getElementById(id).classList.remove('done'));
+  document.getElementById('resetMsg').className='msg';
+
+  /* 1 — a backup must exist first */
+  if(backupAgeHours()>24){
+    const take=await UI.confirmDlg('Backup first',
+      'There is no JSON backup from the last 24 hours. Reset is blocked until you have one. Download it now?',
+      'Download backup',false);
+    if(take)await downloadBackup();
+    msg('resetMsg','Take a backup first, then start the reset again.','error');
+    renderBackupState();
+    return;
+  }
+
+  /* 2 — type the phrase */
+  const p=await UI.form({title:'Reset ALL data',danger:true,okText:'Continue',
+    text:'This deletes every sale, expense, shift, nozzle reading, attendance record, correction and credit balance. Staff accounts, tanks and prices stay.',
+    fields:[{key:'phrase',label:'Type: RESET ALL DATA',type:'text',placeholder:'RESET ALL DATA'}],
+    validate:x=>((x.phrase||'').trim().toUpperCase()==='RESET ALL DATA'?null:'The phrase does not match')});
+  if(!p){msg('resetMsg','Reset cancelled — nothing was deleted.','success');return;}
+  document.getElementById('stepPhrase').classList.add('done');
+
+  /* 3 — password and/or e-mail code */
+  const auth=await verifyIdentity('reset_all_data');
+  if(!auth.ok){msg('resetMsg',auth.message||'Reset cancelled — nothing was deleted.',auth.message?'error':'success');return;}
+
+  /* 4 — final hold */
+  const fin=await UI.form({title:'Last chance',danger:true,okText:'Delete everything',countdown:8,
+    text:'Deleting now. This cannot be undone — your backup file is the only copy.'});
+  if(!fin){msg('resetMsg','Reset cancelled — nothing was deleted.','success');return;}
+  document.getElementById('stepFinal').classList.add('done');
+
+  const btn=document.getElementById('resetBtn');btn.disabled=true;btn.textContent='Resetting…';
+  try{
+    const r=await rpc('admin_reset_all_data',
+      {p_admin_id:session.id,p_confirm_phrase:'RESET ALL DATA',p_token:auth.token||null});
+    if(rpcFailed(r)){msg('resetMsg',SQL_HINT,'error');return;}
+    msg('resetMsg',r.message||(r.success?'Data reset':'Reset failed'),r.success?'success':'error');
+    if(r.success){
+      UI.toast('All data reset','ok');
+      allIssues=[];correctedIds=new Set();
+      refreshAfterFix();loadExpenses();loadShifts();loadReadings();loadAttendance();
+    }
+  }catch(e){msg('resetMsg','Connection error — nothing was deleted','error');}
+  finally{btn.disabled=false;btn.textContent='☢ Reset ALL Data';}
+}
+
 function refreshAll(){
-  loadDashboard();loadTanks();loadSales();loadCustomers();
+  loadDashboard();loadTanks();loadSales();loadCustomers();loadIssues();
 }
 
 (function init(){
@@ -581,7 +1029,9 @@ function refreshAll(){
   document.getElementById('app').style.display='block';
   loadDashboard();loadPrices();loadStaff();loadTanks();loadCustomers();
   loadSales();loadExpenses();loadReports();loadShifts();loadReadings();loadAttendance();
+  loadIssues();loadCorrections();loadSecuritySettings();renderBackupState();
   setInterval(loadDashboard,60000);
+  setInterval(loadIssues,60000);
 })();
 </script>
 </body>

@@ -41,9 +41,21 @@ import java.nio.charset.StandardCharsets;
  */
 public class MainActivity extends AppCompatActivity {
 
-    private static final String APP_HOST = "magmps.github.io";
-    private static final String APP_URL = "https://" + APP_HOST + "/magpms2/index.html";
+    /** Published website — kept reachable so links to it still open in the app. */
+    private static final String SITE_HOST = "magmps.github.io";
+    private static final String SITE_URL = "https://" + SITE_HOST + "/magpms2/index.html";
+
+    /** The same pages bundled in app/src/main/assets, served over https by
+     *  WebViewAssetLoader (so localStorage and geolocation behave normally). */
     private static final String ASSET_HOST = "appassets.androidplatform.net";
+    private static final String ASSET_URL = "https://" + ASSET_HOST + "/assets/index.html";
+
+    /** Where the app starts. Bundled pages ship with the APK, so a release does
+     *  not wait for the website to be republished; data still comes from
+     *  Supabase over the network. Set to false to go back to the live site. */
+    private static final boolean USE_BUNDLED_PAGES = true;
+    private static final String APP_URL = USE_BUNDLED_PAGES ? ASSET_URL : SITE_URL;
+
     private static final int REQ_LOCATION = 41;
 
     private WebView web;
@@ -95,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
             public boolean shouldOverrideUrlLoading(@NonNull WebView view, @NonNull WebResourceRequest request) {
                 Uri url = request.getUrl();
                 String host = url.getHost();
-                if (APP_HOST.equals(host) || ASSET_HOST.equals(host)) return false;
+                if (SITE_HOST.equals(host) || ASSET_HOST.equals(host)) return false;
                 // External links (map attribution etc.) open in the browser.
                 try {
                     startActivity(new Intent(Intent.ACTION_VIEW, url));

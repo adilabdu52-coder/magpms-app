@@ -60,12 +60,20 @@
 
   <div class="card">
     <h2>📄 My Recent Sales</h2>
+    <div class="field-hint" style="text-align:left;margin-bottom:8px">
+      Typed a wrong amount? Tap <b>⚠ Report</b> — even hours later. The admin checks it and fixes the record.
+    </div>
     <div class="table-scroll">
     <table>
-      <thead><tr><th>Time</th><th>Fuel</th><th>Liters</th><th>Total ETB</th></tr></thead>
-      <tbody id="salesBody"><tr><td colspan="4" class="empty">Loading...</td></tr></tbody>
+      <thead><tr><th>Time</th><th>Fuel</th><th>Liters</th><th>Total ETB</th><th>Mistake</th></tr></thead>
+      <tbody id="salesBody"><tr><td colspan="5" class="empty">Loading...</td></tr></tbody>
     </table>
     </div>
+  </div>
+
+  <div class="card">
+    <h2>⚠ My Reported Mistakes</h2>
+    <div id="myIssues" class="empty">None reported</div>
   </div>
 </div>
 
@@ -192,7 +200,7 @@
 <script src="config.js"></script>
 <script src="js/ui.js"></script>
 <script>
-let session=null, prices={}, posMode='liters';
+let session=null, prices={}, posMode='liters', mySales=[], reportedSaleIds=new Set();
 
 function logout(){localStorage.removeItem('magpms_staff');location.href='index.html';}
 
@@ -311,14 +319,71 @@ async function loadMyData(){
     document.getElementById('dMySales').textContent=rev.toLocaleString(undefined,{maximumFractionDigits:0});
     document.getElementById('dMyTx').textContent=live.length;
     document.getElementById('dMyLiters').textContent=lits.toLocaleString(undefined,{maximumFractionDigits:0});
+    mySales=live;
     const tb=document.getElementById('salesBody');
-    if(live.length===0){tb.innerHTML='<tr><td colspan="4" class="empty">No sales yet</td></tr>';return;}
+    if(live.length===0){tb.innerHTML='<tr><td colspan="5" class="empty">No sales yet</td></tr>';return;}
     tb.innerHTML=live.slice(0,20).map(s=>{
       const t=new Date(s.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-      return `<tr><td class="mono">${t}</td><td>${s.fuel_type}</td><td class="mono">${s.liters}</td><td class="mono">${Number(s.total_etb).toFixed(2)}</td></tr>`;
+      const reported=reportedSaleIds.has(String(s.id));
+      const btn=reported?'<span class="tag reported">reported</span>'
+        :`<button class="btn btn-no" style="padding:4px 9px;font-size:11px" onclick="reportMistake('${s.id}')">⚠ Report</button>`;
+      return `<tr><td class="mono">${t}</td><td>${s.fuel_type}</td><td class="mono">${s.liters}</td>
+        <td class="mono">${Number(s.total_etb).toFixed(2)}</td><td>${btn}</td></tr>`;
     }).join('');
   }catch(e){}
 }
+
+/* ---- report a wrong sale (staff can flag, only the admin can change it) ---- */
+async function reportMistake(saleId){
+  const s=mySales.find(x=>String(x.id)===String(saleId));
+  if(!s)return;
+  const when=new Date(s.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+  const v=await UI.form({
+    title:'Report a mistake',
+    text:`Sale of ${when}: ${s.fuel_type} · ${Number(s.liters).toFixed(2)} L · ${Number(s.total_etb).toFixed(2)} ETB. Tell the admin what is wrong — the sale is not changed until the admin approves.`,
+    okText:'Send report',danger:true,
+    fields:[
+      {key:'field',label:'What is wrong',type:'select',value:'amount',options:[
+        {value:'amount',label:'Amount (ETB) is wrong'},{value:'liters',label:'Liters are wrong'},
+        {value:'payment',label:'Payment method is wrong'},{value:'other',label:'Something else'}]},
+      {key:'value',label:'Correct value (if you know it)',type:'number',step:'0.01',placeholder:'e.g. 20'},
+      {key:'note',label:'What happened',type:'text',placeholder:'e.g. pump showed 20 L, I typed 200 L'}
+    ],
+    validate:x=>((x.note||'').trim().length<4?'Write a short note so the admin understands':null)
+  });
+  if(!v)return;
+  const n=parseFloat(v.value);
+  try{
+    const r=await rpc('staff_report_sale_issue',{
+      p_staff_id:session.id,p_sale_id:String(saleId),p_field:v.field,
+      p_claimed_value:isNaN(n)?null:n,p_note:v.note.trim()});
+    if(rpcFailed(r)){UI.toast('Reporting is not installed on the server yet','err');return;}
+    UI.toast(r.message||'Reported',r.success?'ok':'err');
+    if(r.success)loadMyIssues();
+  }catch(e){UI.toast('Connection error','err');}
+}
+async function loadMyIssues(){
+  try{
+    const r=await rpc('my_sale_issues',{p_staff_id:session.id,p_limit:20});
+    const el=document.getElementById('myIssues');
+    if(rpcFailed(r)||!Array.isArray(r)||r.length===0){
+      el.className='empty';el.textContent='None reported';return;}
+    reportedSaleIds=new Set(r.filter(i=>i.status==='open').map(i=>String(i.sale_id)));
+    el.className='';
+    el.innerHTML=r.map(i=>{
+      const t=new Date(i.created_at).toLocaleString('en-GB',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const tag=i.status==='open'?'pending':(i.status==='fixed'?'approved':'rejected');
+      const label=i.status==='open'?'waiting for admin':(i.status==='fixed'?'fixed by admin':'not accepted');
+      return `<div class="row"><div class="info">
+        <h3>${esc(i.field)}${i.claimed_value!=null?' → '+Number(i.claimed_value).toFixed(2):''}</h3>
+        <p>${esc(i.note||'')} · reported ${t}</p>
+        ${i.resolution_note?`<p>Admin: ${esc(i.resolution_note)}</p>`:''}
+        <span class="tag ${tag}">${label}</span></div></div>`;
+    }).join('');
+    renderMySalesRefresh();
+  }catch(e){}
+}
+function renderMySalesRefresh(){ loadMyData(); }
 async function attStatus(){
   try{const r=await rpc('my_attendance_status',{p_staff_id:session.id});
     const b=document.getElementById('attBanner');
@@ -363,7 +428,7 @@ async function loadMyReadings(){
 }
 
 function refreshAll(){
-  loadMyData();loadTanks();loadPrices();
+  loadMyData();loadTanks();loadPrices();loadMyIssues();
   UI.stampUpdated('updStamp');
 }
 
@@ -375,7 +440,7 @@ function refreshAll(){
   document.getElementById('loading').style.display='none';
   document.getElementById('app').style.display='block';
   loadMyData();loadPrices();loadCustomers();checkShift();loadTanks();
-  attStatus();loadNozzles();loadMyReadings();
+  attStatus();loadNozzles();loadMyReadings();loadMyIssues();
   UI.stampUpdated('updStamp');
   setInterval(refreshAll,60000);
 })();
