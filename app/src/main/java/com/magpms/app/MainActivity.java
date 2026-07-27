@@ -41,10 +41,10 @@ import java.nio.charset.StandardCharsets;
  */
 public class MainActivity extends AppCompatActivity {
 
-    private static final String APP_HOST = "hamtilton32.netlify.app";
-    private static final String APP_URL = "https://" + APP_HOST + "/";
-    /** Previous home of the web app; kept in-app so old links keep working. */
-    private static final String LEGACY_HOST = "magmps.github.io";
+    private static final String APP_HOST = "magmps.github.io";
+    private static final String APP_URL = "https://" + APP_HOST + "/magpms2/index.html";
+    /** Kept in-app so old links keep working. */
+    private static final String LEGACY_HOST = APP_HOST;
     private static final String ASSET_HOST = "appassets.androidplatform.net";
     private static final int REQ_LOCATION = 41;
 
