@@ -1,0 +1,80 @@
+name: Release APK
+
+# Every push to main publishes an installable APK as a GitHub Release, so the
+# station gets a permanent download link instead of an Actions artifact that
+# expires and needs a GitHub login to reach.
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'supabase/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v3
+      with:
+        gradle-version: '8.5'
+
+    - name: Read app version
+      id: ver
+      run: |
+        NAME=$(grep -oP 'versionName\s+"\K[^"]+' app/build.gradle)
+        echo "name=$NAME" >> "$GITHUB_OUTPUT"
+        echo "tag=v$NAME-build${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+    - name: Build release APK
+      run: gradle assembleRelease
+
+    - name: Name the file after the version
+      id: apk
+      run: |
+        SRC=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
+        if [ -z "$SRC" ]; then echo "No APK was produced"; exit 1; fi
+        DEST="MAGPMS-${{ steps.ver.outputs.tag }}.apk"
+        cp "$SRC" "$DEST"
+        echo "path=$DEST" >> "$GITHUB_OUTPUT"
+
+    - name: Write the release notes
+      env:
+        COMMIT_MSG: ${{ github.event.head_commit.message }}
+      run: |
+        {
+          printf 'Install: open this page on the phone, tap the .apk below, then allow "install from this source".\n\n'
+          printf '%s\n\n' "${COMMIT_MSG:-Manual build}"
+          printf 'If Corrections or the Danger Zone shows "Backend not installed", run\n'
+          printf 'supabase/migrations/20260727_corrections_and_danger_zone.sql in the Supabase SQL editor.\n'
+        } > release-notes.md
+
+    - name: Publish the release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ steps.ver.outputs.tag }}
+        APK: ${{ steps.apk.outputs.path }}
+      run: |
+        TITLE="MAGPMS ${{ steps.ver.outputs.name }} (build ${{ github.run_number }})"
+        if gh release view "$TAG" >/dev/null 2>&1; then
+          gh release upload "$TAG" "$APK" --clobber
+        else
+          gh release create "$TAG" "$APK" --target "$GITHUB_SHA" \
+            --title "$TITLE" --notes-file release-notes.md
+        fi
+        echo "APK: $(gh release view "$TAG" --json url --jq .url)" >> "$GITHUB_STEP_SUMMARY"
